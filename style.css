@@ -1,3 +1,27 @@
+  body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f4;
+  color: #333;
+ }
+
+ header {
+  background-color: #333;
+  color: white;
+  padding: 1em 0;
+  text-align: center;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+ }
+
+ header h1 {
+  margin: 0;
+ }
+
  #searchInput {
   padding: 8px;
   border: 1px solid #ddd;
@@ -5,4 +29,107 @@
   margin-bottom: 10px;
   width: 80%;
   max-width: 300px;
+ }
+
+ #newThreadButtonContainer {
+  position: relative;
+ }
+
+ #newThreadButton {
+  background-color: #5cb85c;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+ }
+
+ #newThreadButton:hover {
+  background-color: #449d44;
+ }
+
+ .modal-content {
+  display: none; /* Hidden by default */
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: #fefefe;
+  margin-top: 10px;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 300px; /* Adjust as needed */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  z-index: 1;
+ }
+
+ .close-button {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+ }
+
+ .close-button:hover,
+ .close-button:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+ }
+
+ main {
+  padding: 20px;
+ }
+
+ .thread-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+ }
+
+ #noThreadsMessage {
+  font-style: italic;
+  color: #777;
+ }
+
+ .thread {
+  background-color: white;
+  border: 1px solid #ddd;
+  padding: 15px;
+  margin-bottom: 20px;
+  width: 80%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+ }
+
+ .thread h2 {
+  color: #555;
+ }
+
+ /* Estilos adicionales para el formulario */
+ form label {
+  display: block;
+  margin-bottom: 5px;
+  color: #777;
+ }
+
+ form input[type="text"],
+ form textarea {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box; /* Make sure padding doesn't affect width */
+ }
+
+ form button {
+  background-color: #5cb85c;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+ }
+
+ form button:hover {
+  background-color: #449d44;
  }
