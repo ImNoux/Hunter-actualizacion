@@ -62,47 +62,4 @@
   newThreadModalContent.style.display = newThreadModalContent.style.display === 'block' ? 'none' : 'block';
   });
 
-  // Cierra el modal al hacer clic en la "x"
-  closeButton.addEventListener('click', function() {
-  newThreadModalContent.style.display = 'none';
-  });
-
-  // Envía el formulario para crear un nuevo hilo
-  newThreadForm.addEventListener('submit', function(event) {
-  event.preventDefault();
-
-  const category = document.getElementById('category').value;
-  const title = document.getElementById('title').value;
-  const description = document.getElementById('description').value;
-
-  // Crea un nuevo hilo
-  const newThread = document.createElement('div');
-  newThread.classList.add('thread');
-  newThread.innerHTML = `
-  <h2>${title}</h2>
-  <p><strong>Categoría:</strong> ${category}</p>
-  <p>${description}</p>
-  `;
-
-  // Agrega el nuevo hilo al contenedor
-  threadContainer.appendChild(newThread);
-
-  // Oculta el mensaje "No hay hilos aún"
-  noThreadsMessage.style.display = 'none';
-
-  // Cierra el modal
-  newThreadModalContent.style.display = 'none';
-
-  // Limpia el formulario
-  newThreadForm.reset();
-
-  // Guarda los hilos en LocalStorage
-  saveThreadsToLocalStorage();
-  });
-
-  // Escucha los cambios en el campo de búsqueda
-  searchInput.addEventListener('input', function() {
-  const searchTerm = searchInput.value;
-  filterThreads(searchTerm);
-  });
- });
+  // Cierra
