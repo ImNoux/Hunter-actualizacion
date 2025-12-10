@@ -1,3 +1,25 @@
+ // Import the functions you need from the SDKs you need
+ import { initializeApp } from "https://esm.sh/firebase/app";
+ import { getDatabase, ref, push, set, onValue } from "https://esm.sh/firebase/database";
+
+ // Your web app's Firebase configuration
+ const firebaseConfig = {
+  apiKey: "AIzaSyDM9E8Y_YW-ld8MH8-yKS345hklA0v5P_w",
+  authDomain: "hunterteam.firebaseapp.com",
+  databaseURL: "https://hunterteam-default-rtdb.firebaseio.com",
+  projectId: "hunterteam",
+  storageBucket: "hunterteam.firebasestorage.app",
+  messagingSenderId: "1001713111500",
+  appId: "1:1001713111500:web:8729bf9a47a7806f6c4d69",
+  measurementId: "G-W6E0YQ8PEJ"
+ };
+
+ // Initialize Firebase
+ const app = initializeApp(firebaseConfig);
+
+ // Get a reference to the database
+ const db = getDatabase(app);
+
  document.addEventListener('DOMContentLoaded', function() {
   const newThreadButton = document.getElementById('newThreadButton');
   const newThreadModalContent = document.getElementById('newThreadModalContent');
@@ -5,29 +27,23 @@
   const newThreadForm = document.getElementById('newThreadForm');
   const threadContainer = document.querySelector('.thread-container');
   const noThreadsMessage = document.getElementById('noThreadsMessage');
-  const searchInput = document.getElementById('searchInput');
 
-  // Función para guardar los hilos en LocalStorage
-  function saveThreadsToLocalStorage() {
-  const threads = [];
-  const threadElements = threadContainer.querySelectorAll('.thread');
-  threadElements.forEach(threadElement => {
-  threads.push({
-  title: threadElement.querySelector('h2').textContent,
-  category: threadElement.querySelector('p:nth-child(2)').textContent.split(': ')[1],
-  description: threadElement.querySelector('p:nth-child(3)').textContent
-  });
-  });
-  localStorage.setItem('threads', JSON.stringify(threads));
+  // Function to save threads to Firebase
+  function saveThreadToFirebase(thread) {
+  const threadsRef = ref(db, 'threads');
+  push(threadsRef, thread);
   }
 
-  // Función para cargar los hilos desde LocalStorage
-  function loadThreadsFromLocalStorage() {
-  const threadsJSON = localStorage.getItem('threads');
-  if (threadsJSON) {
-  const threads = JSON.parse(threadsJSON);
-  threads.forEach(thread => {
-  const newThread = document.createElement('div');
+  // Function to load threads from Firebase
+  function loadThreadsFromFirebase() {
+  const threadsRef = ref(db, 'threads');
+  onValue(threadsRef, (snapshot) => {
+  threadContainer.innerHTML = ''; // Clear the thread container
+  let threads = snapshot.val();
+  if (threads) {
+  Object.keys(threads).forEach((key) => {
+  let thread = threads[key];
+  let newThread = document.createElement('div');
   newThread.classList.add('thread');
   newThread.innerHTML = `
   <h2>${thread.title}</h2>
@@ -35,31 +51,50 @@
   <p>${thread.description}</p>
   `;
   threadContainer.appendChild(newThread);
-  noThreadsMessage.style.display = 'none';
   });
-  }
-  }
-
-  // Función para filtrar los hilos según el término de búsqueda
-  function filterThreads(searchTerm) {
-  const threadElements = threadContainer.querySelectorAll('.thread');
-  threadElements.forEach(threadElement => {
-  const title = threadElement.querySelector('h2').textContent.toLowerCase();
-  const description = threadElement.querySelector('p:nth-child(3)').textContent.toLowerCase();
-  if (title.includes(searchTerm.toLowerCase()) || description.includes(searchTerm.toLowerCase())) {
-  threadElement.style.display = 'block';
+  noThreadsMessage.style.display = 'none'; // Hide the "No threads yet" message
   } else {
-  threadElement.style.display = 'none';
+  noThreadsMessage.style.display = 'block'; // Show the "No threads yet" message
+  threadContainer.appendChild(noThreadsMessage);
   }
   });
   }
 
-  // Cargar los hilos desde LocalStorage al cargar la página
-  loadThreadsFromLocalStorage();
+  // Load threads from Firebase on page load
+  loadThreadsFromFirebase();
 
-  // Abre/cierra el modal al hacer clic en el botón "+ Nuevo"
+  // Event listener for "+ Nuevo" button click
   newThreadButton.addEventListener('click', function(event) {
-  newThreadModalContent.style.display = newThreadModalContent.style.display === 'block' ? 'none' : 'block';
+  newThreadModalContent.style.display = (newThreadModalContent.style.display === 'none') ? 'block' : 'none';
   });
 
-  // Cierra
+  // Event listener for modal close button
+  closeButton.addEventListener('click', function() {
+  newThreadModalContent.style.display = 'none';
+  });
+
+  // Event listener for new thread form submission
+  newThreadForm.addEventListener('submit', function(event) {
+  event.preventDefault();
+
+  let category = document.getElementById('category').value;
+  let title = document.getElementById('title').value;
+  let description = document.getElementById('description').value;
+
+  // Create a new thread object
+  let thread = {
+  title: title,
+  category: category,
+  description: description
+  };
+
+  // Save the thread to Firebase
+  saveThreadToFirebase(thread);
+
+  // Close the modal
+  newThreadModalContent.style.display = 'none';
+
+  // Clear the form
+  newThreadForm.reset();
+  });
+ });
