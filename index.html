@@ -1,42 +1,64 @@
  <!DOCTYPE html>
- <html lang="es">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reclutamientos</title>
-  <link rel="stylesheet" href="style.css">
- </head>
- <body>
-  <header>
-  <h1>Reclutamientos</h1>
-  <div id="newThreadButtonContainer">
-  <button id="newThreadButton">+ Nuevo</button>
-  <div class="modal-content" id="newThreadModalContent">
-  <span class="close-button">&times;</span>
-  <h2>Crear Nuevo Hilo</h2>
-  <form id="newThreadForm">
-  <label for="category">Categoría:</label>
-  <input type="text" id="category" name="category" value="Hunter" readonly><br><br>
 
-  <label for="title">Título:</label>
-  <input type="text" id="title" name="title" placeholder="ej. insertar usuario de roblox" required><br><br>
+<html lang="es">
 
-  <label for="description">Descripción:</label>
-  <input type="text" id="description" name="description" placeholder="ej. inserte @(ig de la persona que te reclutó)" required><br><br>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reclutamientos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.2.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.2.0/firebase-database.js"></script>
+</head>
 
-  <button type="submit">Publicar Hilo</button>
-  </form>
-  </div>
-  </div>
-  </header>
+<body>
+    <header>
+        <h1>Reclutamientos</h1>
+        <div id="newThreadButtonContainer">
+            <button id="newThreadButton">+ Nuevo</button>
+            <div class="modal-content" id="newThreadModalContent">
+                <span class="close-button">&times;</span>
+                <h2>Crear Nuevo Hilo</h2>
+                <form id="newThreadForm">
+                    <label for="category">Categoría:</label>
+                    <input type="text" id="category" name="category" value="Hunter" readonly><br><br>
 
-  <main>
-  <div class="thread-container">
-  <p id="noThreadsMessage">No hay hilos aún. Sé el primero.</p>
-  <!-- Aquí irán los hilos -->
-  </div>
-  </main>
+                    <label for="title">Título:</label>
+                    <input type="text" id="title" name="title" placeholder="ej. insertar usuario de roblox"
+                        required><br><br>
 
-  <script type="module" src="script.js"></script>
- </body>
+                    <label for="description">Descripción:</label>
+                    <input type="text" id="description" name="description"
+                        placeholder="ej. inserte @(ig de la persona que te reclutó)" required><br><br>
+
+                    <button type="submit">Publicar Hilo</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <input type="text" id="searchInput" placeholder="Buscar por título...">
+
+    <main>
+        <div class="thread-container">
+            <p id="noThreadsMessage">No hay hilos aún. Sé el primero.</p>
+            <!-- Aquí irán los hilos -->
+        </div>
+        <div id="pagination-container">
+        </div>
+    </main>
+
+    <footer>
+        <p><a href="https://www.instagram.com/arc_clxn?igsh=djhzazNnbmFzOXIy">ARC_CLXN</a> &copy; 2025. Todos los
+            derechos reservados.</p>
+        <p class="version">v1.0.0</p>
+    </footer>
+
+    <script type="module" src="script.js"></script>
+</body>
+
 </html>
