@@ -1,126 +1,258 @@
- body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: #f4f4f4;
-  color: #333;
- }
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+}
 
- header {
-  background-color: #333;
-  color: white;
-  padding: 1em 0;
-  text-align: center;
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
- }
+header {
+    background-color: #333;
+    color: white;
+    padding: 1em 0;
+    text-align: center;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+}
 
- header h1 {
-  margin: 0;
- }
+header h1 {
+    margin: 0;
+}
 
- #newThreadButtonContainer {
-  position: relative;
- }
+#newThreadButtonContainer {
+    position: relative;
+}
 
- #newThreadButton {
-  background-color: #5cb85c;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
- }
+#newThreadButton {
+    background-color: #5cb85c;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
 
- #newThreadButton:hover {
-  background-color: #449d44;
- }
+#newThreadButton:hover {
+    background-color: #449d44;
+}
 
- .modal-content {
-  display: none; /* Hidden by default */
-  position: absolute;
-  top: 100%;
-  right: 0;
-  background-color: #fefefe;
-  margin-top: 10px;
-  padding: 20px;
-  border: 1px solid #888;
-  width: 300px; /* Adjust as needed */
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  z-index: 1;
- }
+.modal-content {
+    display: none;
+    /* Hidden by default */
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #fefefe;
+    margin-top: 10px;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 300px;
+    /* Adjust as needed */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+}
 
- .close-button {
-  color: #aaa;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
- }
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
 
- .close-button:hover,
- .close-button:focus {
-  color: black;
-  text-decoration: none;
-  cursor: pointer;
- }
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
 
- main {
-  padding: 20px;
- }
+main {
+    padding: 20px;
+}
 
- .thread-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
- }
+.thread-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
 
- #noThreadsMessage {
-  font-style: italic;
-  color: #777;
- }
+#noThreadsMessage {
+    font-style: italic;
+    color: #777;
+}
 
- .thread {
-  background-color: white;
-  border: 1px solid #ddd;
-  padding: 15px;
-  margin-bottom: 20px;
-  width: 80%;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
- }
+.thread {
+    background-color: white;
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 20px;
+    width: 80%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: relative;
+    /* Add this to position the date */
+}
 
- .thread h2 {
-  color: #555;
- }
+.thread h2 {
+    color: #555;
+    display: flex;
+    /* Use flexbox to align items */
+    align-items: center;
+    /* Vertically center items */
+}
 
- /* Estilos adicionales para el formulario */
- form label {
-  display: block;
-  margin-bottom: 5px;
-  color: #777;
- }
+/* Estilos adicionales para el formulario */
+form label {
+    display: block;
+    margin-bottom: 5px;
+    color: #777;
+}
 
- form input[type="text"],
- form textarea {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-sizing: border-box; /* Make sure padding doesn't affect width */
- }
+form input[type="text"],
+form textarea {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    /* Make sure padding doesn't affect width */
+}
 
- form button {
-  background-color: #5cb85c;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
- }
+form button {
+    background-color: #5cb85c;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
 
- form button:hover {
-  background-color: #449d44;
+form button:hover {
+    background-color: #449d44;
+}
+
+/* Estilos para la paginación */
+#pagination-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination-button {
+    background-color: #f4f4f4;
+    color: #333;
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    margin: 0 5px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.pagination-button:hover {
+    background-color: #ddd;
+}
+
+.pagination-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Estilos para la fecha */
+.thread-date {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.8em;
+    color: #777;
+}
+
+/* Styles for the search input */
+/*header input[type="text"] {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-right: 10px;
+    width: 200px;
+}*/
+
+/* Style for the active page button */
+.pagination-button.active-page {
+    background-color: #007bff;
+    /* Blue */
+    color: white;
+    border-color: #007bff;
+}
+
+footer {
+    text-align: center;
+    /* Center the footer content */
+    padding: 20px;
+    background-color: #333;
+    color: white;
+}
+
+/* Like button style */
+.like-button {
+    background-color: transparent;
+    border: none;
+    color: red;
+    cursor: pointer;
+    font-size: 1em;
+    padding: 5px 10px;
+}
+
+.like-button:hover {
+    color: #0056b3;
+}
+
+.like-button i {
+    color: transparent;
+    /* Initially transparent */
+    -webkit-text-stroke: 1px red;
+    /* For outline effect */
+    text-stroke: 1px red;
+    font-size: 1.2em;
+    /* Adjust size as needed */
+}
+
+.like-button.liked i {
+    color: red;
+    /* Solid red when liked */
+    -webkit-text-stroke: 0px;
+    /* Remove outline */
+    text-stroke: 0px;
+}
+
+/* Verified badge style for FontAwesome icon */
+.insignia-verificado {
+    color: #3897f0;
+    /* Azul como Instagram */
+    margin-left: 5px; /* Add some left margin */
+    font-size: 0.7em;
+    /* Ajusta el tamaño si es necesario */
+    vertical-align: middle;
+    /* Alinea con el texto */
+}
+
+/* Version style */
+footer .version {
+    font-size: 0.8em;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* Styles for the search input outside the header */
+#searchInput {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 10px auto;
+    /* Center the input */
+    width: 80%;
+    /* Adjust width as needed */
+    display: block;
+    /* Make it a block element to center it */
 }
