@@ -6,7 +6,13 @@ html, body {
     font-family: 'Segoe UI', Tahoma, sans-serif;
     color: #e1e1e1;
     background-color: #232527;
-    /* Fondo personalizado */
+    
+    /* CONFIGURACIÓN PARA FOOTER SIEMPRE ABAJO */
+    min-height: 100vh; /* La página mide al menos el 100% de la pantalla */
+    display: flex;     /* Activamos modo flexible */
+    flex-direction: column; /* Organizamos todo en columna vertical */
+
+    /* Fondo personalizado (Claro 0.5) */
     background-image: linear-gradient(rgba(20, 20, 20, 0.5), rgba(20, 20, 20, 0.5)), 
                       url('https://i.ibb.co/mrhC10fw/Line-Runner-Template-1.png');
     background-size: cover; background-position: center; 
@@ -20,6 +26,7 @@ header {
     padding: 0; 
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
     position: sticky; top: 0; z-index: 100;
+    flex-shrink: 0; /* El header no se encoge */
 }
 
 .header-top {
@@ -72,7 +79,17 @@ header h1 {
 .menu-container, #newThreadButtonContainer { position: relative; }
 
 /* --- 4. CONTENIDO PRINCIPAL --- */
-main { padding: 20px; max-width: 800px; margin: 0 auto; position: relative; z-index: 5; }
+main { 
+    padding: 20px; 
+    max-width: 800px; 
+    width: 100%; /* Asegura ancho completo */
+    margin: 0 auto; 
+    position: relative; 
+    z-index: 5; 
+    
+    /* ESTO EMPUJA EL FOOTER ABAJO */
+    flex: 1; 
+}
 .thread-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
 .thread {
@@ -91,7 +108,7 @@ main { padding: 20px; max-width: 800px; margin: 0 auto; position: relative; z-in
     border-radius: 4px; border: 1px solid #333; margin-top: 10px; display: block;
 }
 
-/* Etiqueta de Rango (MODIFICADO: Margen a la derecha para que salga antes del nombre) */
+/* Etiqueta de Rango */
 .rank-badge {
     background-color: #333;
     color: #00a2ff;
@@ -100,12 +117,12 @@ main { padding: 20px; max-width: 800px; margin: 0 auto; position: relative; z-in
     border-radius: 12px;
     border: 1px solid #00a2ff;
     vertical-align: middle;
-    margin-right: 8px; /* Antes era margin-left */
+    margin-right: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-/* --- 5. FORMULARIOS Y MODALES (CORREGIDO PARA MÓVIL) --- */
+/* --- 5. FORMULARIOS Y MODALES (MÓVIL FRIENDLY) --- */
 .modal-content {
     display: none; 
     position: fixed; 
@@ -137,7 +154,7 @@ main { padding: 20px; max-width: 800px; margin: 0 auto; position: relative; z-in
 .form-group { margin-bottom: 15px; }
 form label { display: block; margin-bottom: 6px; font-weight: 600; color: #b5bac1; font-size: 0.9em;}
 
-/* Inputs, Textareas y Selects (Gris Medio) */
+/* Inputs, Textareas y Selects */
 input[type="text"], textarea, select { 
     width: 100%; padding: 12px; 
     background-color: #383a40; 
@@ -155,7 +172,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
     outline: none;
 }
 
-/* Botón de subir archivo (Gris) */
+/* Botón de subir archivo */
 .upload-btn-gray {
     background-color: #383a40; color: #b5bac1; padding: 12px; 
     border: 2px dashed #4e5058; border-radius: 6px;
@@ -170,7 +187,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
     margin-top: 5px; min-height: 18px; margin-bottom: 10px;
 }
 
-/* Botón Publicar (Azul) */
+/* Botón Publicar */
 .publish-btn {
     width: 100%; padding: 12px; 
     background-color: #00a2ff; color: white;
@@ -187,7 +204,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
     background-color: #111; color: white; font-weight: bold;
 }
 
-/* Estilos de otros modales (Info/Comments) */
+/* Estilos de otros modales */
 .info-content, .comments-content {
     background-color: #2b2d31; color: #fff; border: 3px solid #000;
     border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
@@ -201,7 +218,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
 }
 .pagination-button.active-page { background-color: #00a2ff; }
 
-/* --- 7. FOOTER (CENTRADO) --- */
+/* --- 7. FOOTER (CENTRADO Y SIEMPRE AL FONDO) --- */
 footer {
     text-align: center; 
     padding: 20px; 
@@ -212,6 +229,7 @@ footer {
     width: 100% !important; margin: 0 !important; 
     z-index: 10; position: relative;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
+    flex-shrink: 0; /* No se encoge */
 }
 footer p { margin: 5px 0; }
 footer .version { font-size: 0.8em; color: #777; }
