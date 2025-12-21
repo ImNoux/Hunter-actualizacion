@@ -42,9 +42,9 @@
                         <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
 
                         <div class="form-group">
-                            <label for="categorySelect">Selecciona tu Rango:</label>
+                            <label for="categorySelect">Rango:</label>
                             <select id="categorySelect" required>
-                                <option value="" disabled selected>-- Elige una opción --</option>
+                                <option value="" disabled selected>-- Selecciona --</option>
                                 <option value="Hunter">Hunter</option>
                                 <option value="Creator">Creator</option>
                                 <option value="Elite">Elite</option>
@@ -57,20 +57,24 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="title">Usuario de Roblox:</label>
-                            <input type="text" id="title" name="title" placeholder="Ej: ARC_KIUXT" required autocomplete="off">
+                            <label for="robloxUser">Usuario Roblox:</label>
+                            <input type="text" id="robloxUser" name="robloxUser" placeholder="Ej: ARC_KIUXT" required autocomplete="off">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="title">Título del Post:</label>
+                            <input type="text" id="title" name="title" placeholder="Ej: Busco equipo..." required autocomplete="off">
                         </div>
 
                         <div class="form-group">
                             <label for="description">Descripción:</label>
-                            <textarea id="description" name="description" placeholder="Escribe aquí los detalles..." required rows="4"></textarea>
+                            <textarea id="description" name="description" placeholder="Escribe los detalles..." required rows="4"></textarea>
                         </div>
 
                         <label for="imageFile" class="upload-btn-gray">
-                            <i class="fas fa-image"></i> Agregar Foto o Video
+                            <i class="fas fa-image"></i> Multimedia
                         </label>
                         <input type="file" id="imageFile" accept="image/*, video/*" style="display:none;">
-                        
                         <p id="fileName" class="file-name-display"></p>
 
                         <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
@@ -98,7 +102,7 @@
         </div>
     </div>
 
-    <div id="updatesModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('updatesModal')">&times;</span><h2>Actualizaciones</h2><p>Diseño simplificado y moderno.</p></div></div>
+    <div id="updatesModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('updatesModal')">&times;</span><h2>Actualizaciones</h2><p>Nuevo formulario completo.</p></div></div>
     <div id="aboutModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('aboutModal')">&times;</span><h2>ARC</h2></div></div>
     <div id="contactModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('contactModal')">&times;</span><h2>Discord</h2></div></div>
 
@@ -127,7 +131,6 @@
         document.getElementById('imageFile').onchange = function() {
             if(this.files[0]) {
                 let name = this.files[0].name;
-                // Acortar nombre si es muy largo
                 if(name.length > 25) name = name.substring(0, 25) + '...';
                 document.getElementById('fileName').textContent = name;
             } else {
