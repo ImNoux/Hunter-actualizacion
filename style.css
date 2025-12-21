@@ -1,4 +1,4 @@
-/* --- 1. RESET Y FONDO --- */
+/* --- 1. RESET Y FONDO (AJUSTADO: Footer abajo + Fondo claro) --- */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {
@@ -8,25 +8,25 @@ html, body {
     background-color: #232527;
     
     /* CONFIGURACIÓN PARA FOOTER SIEMPRE ABAJO */
-    min-height: 100vh; /* La página mide al menos el 100% de la pantalla */
-    display: flex;     /* Activamos modo flexible */
-    flex-direction: column; /* Organizamos todo en columna vertical */
+    min-height: 100vh; 
+    display: flex;     
+    flex-direction: column; 
 
-    /* Fondo personalizado (Claro 0.5) */
+    /* Fondo personalizado (Más claro: 0.5) */
     background-image: linear-gradient(rgba(20, 20, 20, 0.5), rgba(20, 20, 20, 0.5)), 
                       url('https://i.ibb.co/mrhC10fw/Line-Runner-Template-1.png');
     background-size: cover; background-position: center; 
     background-attachment: fixed; background-repeat: no-repeat;
 }
 
-/* --- 2. HEADER ESTRUCTURA (2 PISOS) --- */
+/* --- 2. HEADER ESTRUCTURA --- */
 header {
     background-color: rgba(25, 27, 29, 0.98);
     border-bottom: 3px solid #000;
     padding: 0; 
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
     position: sticky; top: 0; z-index: 100;
-    flex-shrink: 0; /* El header no se encoge */
+    flex-shrink: 0; 
 }
 
 .header-top {
@@ -42,7 +42,7 @@ header h1 {
     text-align: center; flex-grow: 1;
 }
 
-/* --- 3. BARRA DE PESTAÑAS (TABS) --- */
+/* --- 3. BARRA DE PESTAÑAS Y BOTONES --- */
 .nav-tabs {
     display: flex;
     justify-content: center;
@@ -70,24 +70,41 @@ header h1 {
     background-color: #151515;
 }
 
-/* Botones pequeños del menú */
+/* BOTONES PEQUEÑOS (Menú y Nuevo) - ESTILO UNIFICADO (BLANCO) */
 .menu-btn, #newThreadButton {
-    background-color: #393b3d; color: #fff; padding: 8px 12px;
-    border: 2px solid #000; border-radius: 4px; cursor: pointer; font-weight: bold;
+    background-color: #fff; 
+    color: #000;            
+    padding: 8px 12px;
+    border: 2px solid #000; 
+    border-radius: 6px;     
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9em;
+    font-family: inherit;
+    transition: transform 0.1s, background-color 0.2s; 
 }
-#newThreadButton { background-color: #fff; color: #191b1d; border-color: #000; }
+
+.menu-btn:hover, #newThreadButton:hover {
+    background-color: #f2f2f2; 
+    transform: translateY(-2px); 
+}
+
+.menu-btn:active, #newThreadButton:active {
+    transform: translateY(0);
+}
+
 .menu-container, #newThreadButtonContainer { position: relative; }
 
 /* --- 4. CONTENIDO PRINCIPAL --- */
 main { 
     padding: 20px; 
     max-width: 800px; 
-    width: 100%; /* Asegura ancho completo */
+    width: 100%; 
     margin: 0 auto; 
     position: relative; 
     z-index: 5; 
     
-    /* ESTO EMPUJA EL FOOTER ABAJO */
+    /* Empuja el footer hacia abajo si hay poco contenido */
     flex: 1; 
 }
 .thread-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -108,7 +125,7 @@ main {
     border-radius: 4px; border: 1px solid #333; margin-top: 10px; display: block;
 }
 
-/* Etiqueta de Rango */
+/* Etiqueta de Rango (A la izquierda del nombre) */
 .rank-badge {
     background-color: #333;
     color: #00a2ff;
@@ -117,12 +134,12 @@ main {
     border-radius: 12px;
     border: 1px solid #00a2ff;
     vertical-align: middle;
-    margin-right: 8px;
+    margin-right: 8px; 
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-/* --- 5. FORMULARIOS Y MODALES (MÓVIL FRIENDLY) --- */
+/* --- 5. MODAL DE CREAR PUBLICACIÓN (Fixed + Scroll) --- */
 .modal-content {
     display: none; 
     position: fixed; 
@@ -132,7 +149,6 @@ main {
     
     width: 90%; 
     max-width: 400px; 
-    
     max-height: 85vh; 
     overflow-y: auto; 
 
@@ -146,7 +162,6 @@ main {
 }
 .close-button { color: #aaa; float: right; font-size: 24px; font-weight: bold; cursor: pointer; }
 
-/* Barra de scroll bonita para el modal */
 .modal-content::-webkit-scrollbar { width: 6px; }
 .modal-content::-webkit-scrollbar-thumb { background-color: #555; border-radius: 3px; }
 
@@ -181,7 +196,6 @@ input[type="text"]:focus, textarea:focus, select:focus {
 }
 .upload-btn-gray:hover { background-color: #404249; border-color: #00a2ff; color: #fff; }
 
-/* Nombre del archivo pequeño */
 .file-name-display {
     font-size: 0.8em; color: #00a2ff; text-align: center; 
     margin-top: 5px; min-height: 18px; margin-bottom: 10px;
@@ -197,20 +211,79 @@ input[type="text"]:focus, textarea:focus, select:focus {
 }
 .publish-btn:hover { background-color: #0088cc; transform: translateY(-2px); }
 
-/* Buscador Principal */
+/* Buscador */
 #searchInput {
     padding: 12px; border: 3px solid #000; border-radius: 6px;
     margin: 20px auto; width: 90%; display: block;
     background-color: #111; color: white; font-weight: bold;
 }
 
-/* Estilos de otros modales */
-.info-content, .comments-content {
-    background-color: #2b2d31; color: #fff; border: 3px solid #000;
-    border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+/* --- 6. MODALES DEL MENÚ Y COMENTARIOS (Ventanas Flotantes) --- */
+.modal-overlay { 
+    display: none; 
+    position: fixed; 
+    top: 0; left: 0; 
+    width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.85); 
+    z-index: 3500; 
+    overflow-y: auto; 
 }
 
-/* --- 6. PAGINACIÓN --- */
+/* La caja flotante centrada */
+.info-content, .comments-content {
+    position: relative;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); 
+    
+    width: 90%;
+    max-width: 400px;
+    
+    background-color: #2b2d31; 
+    border: 2px solid #1e1f22;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+    color: #e1e1e1;
+    text-align: center; 
+}
+
+.info-content h2, .comments-content h3 {
+    margin-top: 0; 
+    color: #fff; 
+    border-bottom: 2px solid #000; 
+    padding-bottom: 10px; 
+    margin-bottom: 15px;
+    font-size: 1.4em;
+}
+
+.info-content p { 
+    color: #ccc; 
+    line-height: 1.6; 
+    margin-bottom: 15px;
+}
+
+/* Ajuste lista comentarios */
+#commentsList {
+    text-align: left;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    padding-right: 5px;
+    border: 1px solid #1e1f22;
+    background-color: #232527;
+    padding: 10px;
+    border-radius: 6px;
+}
+#commentsList::-webkit-scrollbar { width: 5px; }
+#commentsList::-webkit-scrollbar-thumb { background-color: #00a2ff; border-radius: 3px; }
+
+/* Ajustes formulario comentarios */
+#commentForm { display: flex; gap: 5px; margin-top: 10px; }
+#commentForm button { width: auto; background-color: #fff; color: #000; border: 2px solid #000; }
+
+
+/* --- 7. PAGINACIÓN --- */
 #pagination-container { display: flex; justify-content: center; margin-top: 20px; }
 .pagination-button {
     background-color: #393b3d; color: #fff; border: 2px solid #000;
@@ -218,7 +291,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
 }
 .pagination-button.active-page { background-color: #00a2ff; }
 
-/* --- 7. FOOTER (CENTRADO Y SIEMPRE AL FONDO) --- */
+/* --- 8. FOOTER (CENTRADO Y SIEMPRE AL FONDO) --- */
 footer {
     text-align: center; 
     padding: 20px; 
@@ -229,12 +302,12 @@ footer {
     width: 100% !important; margin: 0 !important; 
     z-index: 10; position: relative;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
-    flex-shrink: 0; /* No se encoge */
+    flex-shrink: 0; 
 }
 footer p { margin: 5px 0; }
 footer .version { font-size: 0.8em; color: #777; }
 
-/* --- 8. BOTONES INTERACCIÓN --- */
+/* --- 9. BOTONES INTERACCIÓN --- */
 .thread-actions { display: flex; gap: 20px; margin-top: 15px; }
 .like-button, .comment-button {
     background: none; border: none; cursor: pointer; color: #aaa; font-weight: bold; font-size: 1em;
@@ -243,7 +316,7 @@ footer .version { font-size: 0.8em; color: #777; }
 .like-button.liked { color: #ff4d4d; }
 .comment-button:hover { color: #00a2ff; }
 
-/* --- 9. EXTRAS --- */
+/* --- 10. EXTRAS --- */
 .menu-dropdown { display: none; position: absolute; top: 40px; left: 0; background: #222; border: 2px solid #000; z-index: 2000; min-width: 160px;}
 .show { display: block !important; }
 .menu-dropdown a { display: block; padding: 10px 20px; color: #fff; text-decoration: none; border-bottom: 1px solid #333; }
@@ -251,8 +324,3 @@ footer .version { font-size: 0.8em; color: #777; }
 
 #floating-robux-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .bouncing-robux { position: absolute; width: 40px; }
-.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1500; overflow-y: auto;}
-
-/* Ajustes para el formulario de comentarios */
-#commentForm { display: flex; gap: 5px; margin-top: 10px; }
-#commentForm button { width: auto; background-color: #fff; color: #000; border: 2px solid #000; }
