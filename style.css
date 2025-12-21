@@ -7,7 +7,7 @@ html, body {
     color: #e1e1e1;
     background-color: #232527;
     /* Fondo personalizado */
-    background-image: linear-gradient(rgba(20, 20, 20, 0.9), rgba(20, 20, 20, 0.9)), 
+    background-image: linear-gradient(rgba(20, 20, 20, 0.5), rgba(20, 20, 20, 0.5)), 
                       url('https://i.ibb.co/mrhC10fw/Line-Runner-Template-1.png');
     background-size: cover; background-position: center; 
     background-attachment: fixed; background-repeat: no-repeat;
