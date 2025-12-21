@@ -17,7 +17,7 @@ html, body {
 header {
     background-color: rgba(25, 27, 29, 0.98);
     border-bottom: 3px solid #000;
-    padding: 0; /* Sin padding global */
+    padding: 0; 
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
     position: sticky; top: 0; z-index: 100;
 }
@@ -35,16 +35,16 @@ header h1 {
     text-align: center; flex-grow: 1;
 }
 
-/* --- 3. BARRA DE PESTAÑAS (TABS - LO NUEVO) --- */
+/* --- 3. BARRA DE PESTAÑAS (TABS) --- */
 .nav-tabs {
     display: flex;
     justify-content: center;
-    background-color: #111; /* Fondo negro */
+    background-color: #111; 
     border-top: 1px solid #333;
 }
 
 .tab-btn {
-    flex: 1; /* Ocupan el mismo ancho */
+    flex: 1; 
     background: none; border: none;
     color: #888;
     padding: 12px 0;
@@ -59,7 +59,7 @@ header h1 {
 
 .tab-btn.active {
     color: #fff;
-    border-bottom: 4px solid #00a2ff; /* Línea azul activa */
+    border-bottom: 4px solid #00a2ff; 
     background-color: #151515;
 }
 
@@ -91,40 +91,91 @@ main { padding: 20px; max-width: 800px; margin: 0 auto; position: relative; z-in
     border-radius: 4px; border: 1px solid #333; margin-top: 10px; display: block;
 }
 
-/* --- 5. FORMULARIOS Y MODALES --- */
-.modal-content, .info-content, .comments-content {
-    background-color: #2b2d31; color: #fff; border: 3px solid #000;
-    border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+/* Etiqueta de Rango (Hunter, Creator, etc.) */
+.rank-badge {
+    background-color: #333;
+    color: #00a2ff;
+    font-size: 0.6em;
+    padding: 3px 8px;
+    border-radius: 12px;
+    border: 1px solid #00a2ff;
+    vertical-align: middle;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
+
+/* --- 5. FORMULARIOS Y MODALES (DISEÑO GRIS MODERNO) --- */
 .modal-content {
     display: none; position: absolute; top: 70px; right: 10px;
-    padding: 20px; width: 300px; z-index: 1005;
+    width: 350px; z-index: 1005;
+    /* Nuevo estilo gris */
+    background-color: #2b2d31;
+    border: 2px solid #1e1f22;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
 }
 .close-button { color: #aaa; float: right; font-size: 24px; font-weight: bold; cursor: pointer; }
 
-/* Botón de subir archivo */
-.upload-btn {
-    background:#111; color:#ccc; padding:12px; border:2px dashed #444;
-    text-align:center; cursor:pointer; border-radius:4px; font-weight:bold;
-    transition: 0.2s; display: block; margin-bottom: 5px;
-}
-.upload-btn:hover { border-color: #00a2ff; color: #00a2ff; background: #1a1a1a; }
+/* Grupos del formulario */
+.form-group { margin-bottom: 15px; }
+form label { display: block; margin-bottom: 6px; font-weight: 600; color: #b5bac1; font-size: 0.9em;}
 
-/* Inputs */
-form label { display: block; margin-bottom: 5px; font-weight: bold; }
-input[type="text"], textarea { 
-    width: 100%; padding: 10px; background: #000; color: white; 
-    border: 1px solid #444; border-radius: 4px; margin-bottom: 10px;
+/* Inputs, Textareas y Selects (Gris Medio) */
+input[type="text"], textarea, select { 
+    width: 100%; padding: 12px; 
+    background-color: #383a40; 
+    color: #f2f3f5; 
+    border: 1px solid #1e1f22; 
+    border-radius: 6px; 
+    margin-bottom: 0; /* Controlado por form-group */
     font-family: inherit;
+    font-size: 0.95em;
+    transition: all 0.2s ease;
 }
-button#submitBtn, form button {
-    width: 100%; padding: 10px; background: #fff; color: #000;
-    border: 3px solid #000; font-weight: bold; cursor: pointer; border-radius: 4px;
+input[type="text"]:focus, textarea:focus, select:focus {
+    background-color: #404249;
+    border-color: #00a2ff;
+    outline: none;
 }
+
+/* Botón de subir archivo (Gris) */
+.upload-btn-gray {
+    background-color: #383a40; color: #b5bac1; padding: 12px; 
+    border: 2px dashed #4e5058; border-radius: 6px;
+    text-align: center; cursor: pointer; font-weight: 600; font-size: 0.9em;
+    display: block; margin-top: 10px; transition: all 0.2s;
+}
+.upload-btn-gray:hover { background-color: #404249; border-color: #00a2ff; color: #fff; }
+
+/* Nombre del archivo pequeño */
+.file-name-display {
+    font-size: 0.8em; color: #00a2ff; text-align: center; 
+    margin-top: 5px; min-height: 18px; margin-bottom: 10px;
+}
+
+/* Botón Publicar (Azul) */
+.publish-btn {
+    width: 100%; padding: 12px; 
+    background-color: #00a2ff; color: white;
+    border: none; border-radius: 6px;
+    font-weight: bold; font-size: 1em; cursor: pointer;
+    transition: transform 0.1s, background-color 0.2s;
+}
+.publish-btn:hover { background-color: #0088cc; transform: translateY(-2px); }
+
+/* Buscador Principal */
 #searchInput {
     padding: 12px; border: 3px solid #000; border-radius: 6px;
     margin: 20px auto; width: 90%; display: block;
     background-color: #111; color: white; font-weight: bold;
+}
+
+/* Estilos de otros modales (Info/Comments) */
+.info-content, .comments-content {
+    background-color: #2b2d31; color: #fff; border: 3px solid #000;
+    border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
 }
 
 /* --- 6. PAGINACIÓN --- */
@@ -145,7 +196,6 @@ footer {
     font-weight: bold;
     width: 100% !important; margin: 0 !important; 
     z-index: 10; position: relative;
-    /* Flex para centrado perfecto */
     display: flex; flex-direction: column; justify-content: center; align-items: center;
 }
 footer p { margin: 5px 0; }
@@ -169,3 +219,7 @@ footer .version { font-size: 0.8em; color: #777; }
 #floating-robux-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .bouncing-robux { position: absolute; width: 40px; }
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1500; overflow-y: auto;}
+
+/* Ajustes para el formulario de comentarios (que usa estilos viejos) */
+#commentForm { display: flex; gap: 5px; margin-top: 10px; }
+#commentForm button { width: auto; background-color: #fff; color: #000; border: 2px solid #000; }
