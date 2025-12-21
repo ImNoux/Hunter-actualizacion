@@ -23,7 +23,7 @@ let totalThreads = 0;
 let searchTerm = ''; 
 let activeThreadId = null; 
 
-// --- NUEVA VARIABLE PARA FOROS ---
+// --- VARIABLE PARA FOROS ---
 let currentSection = 'Publicaciones'; 
 
 // --- FUNCIONES DE UTILIDAD ---
@@ -41,32 +41,19 @@ window.toggleMenu = function() {
     if (dropdown) dropdown.classList.toggle('show');
 };
 
-// --- NUEVA FUNCIÓN PARA CAMBIAR ENTRE PUBLICACIONES Y FOROS ---
+// --- CAMBIAR ENTRE PUBLICACIONES Y FOROS ---
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
     currentPage = 1;
     
-    // Actualizar botones visualmente
     document.querySelectorAll('.tab-btn').forEach(btn => {
         if(btn.textContent.trim() === sectionName) btn.classList.add('active');
         else btn.classList.remove('active');
     });
 
-    // Actualizar título del modal
     const modalTitle = document.getElementById('modalSectionTitle');
     if(modalTitle) modalTitle.textContent = sectionName;
 
-    // Recargar la lista con el nuevo filtro
-    // Nota: Como tu código usa loadThreadsFromFirebase definido dentro del scope,
-    // necesitamos disparar la recarga de otra forma o confiar en que el input de busqueda lo haga,
-    // pero idealmente deberíamos llamar a loadThreadsFromFirebase aquí.
-    // Como la función está dentro del DOMContentLoaded, simulamos un input o recargamos si fuera global.
-    // Para que funcione con tu estructura actual, dispararemos un evento de input falso o llamaremos a la función si fuera accesible.
-    // SOLUCIÓN: La función loadThreadsFromFirebase está encapsulada. 
-    // Para que esto funcione sin cambiar tu estructura, moveré la lógica de renderizado principal
-    // para que reaccione al cambio de variable global.
-    
-    // Disparamos un evento personalizado para recargar
     document.dispatchEvent(new Event('reloadThreads'));
 };
 
@@ -77,7 +64,6 @@ window.openComments = function(threadId) {
     const list = document.getElementById('commentsList');
     const usernameInput = document.getElementById('usernameInput');
 
-    // Cargar nombre guardado
     const savedName = localStorage.getItem('chatUsername');
     if (savedName && usernameInput) {
         usernameInput.value = savedName;
@@ -222,17 +208,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (threads) {
                 let allThreads = Object.entries(threads).sort((a, b) => b[1].timestamp - a[1].timestamp);
                 
-                // --- FILTRO MODIFICADO PARA INCLUIR LA SECCIÓN (FOROS/PUBLICACIONES) ---
                 let filteredThreads = allThreads.filter(([key, thread]) => {
                     const matchesSearch = thread.title.toLowerCase().includes(searchTerm.toLowerCase());
-                    
-                    // Lógica para determinar la sección del hilo
                     let threadSection = thread.section;
-                    // Si es un post antiguo y no tiene sección, asumimos 'Publicaciones'
                     if (!threadSection) threadSection = 'Publicaciones'; 
-
                     const matchesSection = (threadSection === currentSection);
-
                     return matchesSearch && matchesSection;
                 });
                 
@@ -251,11 +231,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     let formattedViewCount = formatCount(thread.views || 0);
                     let formattedCommentCount = formatCount(rawCommentCount);
 
-                    // --- DETECTAR SI ES VIDEO O IMAGEN PARA MOSTRARLO ---
                     let mediaHTML = '';
                     if (thread.image) {
                         const isVideo = thread.image.endsWith('.mp4') || thread.image.endsWith('.webm') || thread.image.endsWith('.mov') || thread.image.includes('/video/upload/');
-
                         if (isVideo) {
                             mediaHTML = `
                                 <div style="position:relative; width:100%; margin-top:10px; border-radius:4px; overflow:hidden; border:2px solid #000; background:#000;">
@@ -269,18 +247,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
 
-                    // Badge de Rango
                     let displayRank = thread.rank;
-                    // Compatibilidad con categorías antiguas si no hay rango
                     if (!displayRank && thread.category && !['Publicaciones', 'Foros'].includes(thread.category)) {
                         displayRank = thread.category;
                     }
                     let rankBadge = displayRank ? `<span class="rank-badge">${displayRank}</span>` : '';
 
-
+                    // MODIFICADO: rankBadge va ANTES del nombre (thread.title)
                     newThread.innerHTML = `
                         <div class="thread-date">${thread.displayDate}</div>
-                        <h2>${thread.title} ${rankBadge} ${insigniaVerificado}</h2>
+                        <h2>${rankBadge} ${thread.title} ${insigniaVerificado}</h2>
                         <p>${thread.description}</p>
                         
                         ${mediaHTML}
@@ -330,7 +306,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Escuchamos el evento personalizado para recargar cuando se cambia de pestaña
     document.addEventListener('reloadThreads', () => {
         loadThreadsFromFirebase(currentPage, searchTerm);
     });
@@ -378,41 +353,32 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
-    // --- NUEVA LÓGICA DE ENVÍO DE FORMULARIO (CLOUDINARY) ---
     if(newThreadForm) {
         newThreadForm.onsubmit = async (event) => {
             event.preventDefault();
-
-            // Interfaz de carga
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.textContent;
             submitBtn.textContent = "Subiendo archivo...";
             submitBtn.disabled = true;
 
             const title = document.getElementById('title').value;
-            // El campo Categoría ahora es el RANGO (Rank)
             const category = document.getElementById('categorySelect') ? document.getElementById('categorySelect').value : '';
             const description = document.getElementById('description').value;
             const fileInput = document.getElementById('imageFile');
 
             let mediaUrl = ''; 
-
-            // 1. SUBIR A CLOUDINARY (Si hay archivo)
             if (fileInput.files && fileInput.files[0]) {
                 const file = fileInput.files[0];
                 const formData = new FormData();
                 formData.append('file', file);
-
                 const uploadPreset = 'comunidad_arc'; 
                 const cloudName = 'dmrlmfoip'; 
-
                 formData.append('upload_preset', uploadPreset);
                 const url = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
 
                 try {
                     const response = await fetch(url, { method: 'POST', body: formData });
                     const data = await response.json();
-
                     if (data.secure_url) {
                         mediaUrl = data.secure_url; 
                     } else {
@@ -431,18 +397,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            // 2. GUARDAR EN FIREBASE
             let thread = {
                 title: title,
-                rank: category, // Guardamos el select como Rango
+                rank: category, 
                 description: description,
                 image: mediaUrl,
-                section: currentSection // GUARDAMOS LA SECCIÓN ACTUAL (Foros o Publicaciones)
+                section: currentSection 
             };
 
             saveThreadToFirebase(thread);
-
-            // Limpiar y recargar
             newThreadModalContent.style.display = 'none';
             newThreadForm.reset();
             document.getElementById('fileName').textContent = "";
