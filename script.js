@@ -30,14 +30,16 @@ function makeLinksClickable(text) {
     });
 }
 
-// --- NUEVA FUNCIÓN: FORMATEAR NÚMEROS (1.5mil, 1mill.) ---
+// --- NUEVA FUNCIÓN: FORMATEAR NÚMEROS (1.5 mil, 1 mill.) ---
 function formatCount(num) {
     if (!num) return 0;
     if (num >= 1000000) {
-        return (num / 1000000).toFixed(0).replace(/\.0$/, '') + 'mill.';
+        // Agregamos un espacio antes de 'mill.'
+        return (num / 1000000).toFixed(0).replace(/\.0$/, '') + ' mill.';
     }
     if (num >= 1000) {
-        return (num / 1000).toFixed(0).replace(/\.0$/, '') + 'mil';
+        // Agregamos un espacio antes de 'mil'
+        return (num / 1000).toFixed(0).replace(/\.0$/, '') + ' mil';
     }
     return num;
 }
@@ -143,7 +145,7 @@ function renderThread(key, thread, container) {
 
     const rawLikeCount = thread.likeCount || 0;
     const rawCommentCount = thread.comments ? Object.keys(thread.comments).length : 0;
-    
+
     // APLICAR FORMATO A LOS NÚMEROS AQUÍ
     const likeCountDisplay = formatCount(rawLikeCount);
     const commentCountDisplay = formatCount(rawCommentCount);
@@ -301,7 +303,7 @@ window.openComments = function(key) {
             Object.values(data).forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
-                
+
                 const commentWithLinks = makeLinksClickable(c.text);
 
                 item.innerHTML = `<span style="color:#00a2ff;font-weight:bold;">${c.username || 'Anon'}:</span> <span style="color:#ddd;">${commentWithLinks}</span>`;
@@ -311,7 +313,7 @@ window.openComments = function(key) {
             list.innerHTML = '<p style="text-align:center;color:#777;">Sé el primero en comentar.</p>';
         }
     });
-    
+
     const cForm = document.getElementById('commentForm');
     if(cForm) {
         cForm.onsubmit = (e) => {
@@ -335,7 +337,7 @@ function initBouncingRobux() {
         img.style.left = Math.random() * 80 + '%';
         img.style.top = Math.random() * 80 + '%';
         container.appendChild(img);
-        
+
         let x = parseFloat(img.style.left);
         let y = parseFloat(img.style.top);
         let dx = (Math.random() - 0.5) * 0.5;
