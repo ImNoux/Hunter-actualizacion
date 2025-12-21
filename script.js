@@ -1,5 +1,6 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
-import { getDatabase, ref, push, onValue, query, orderByChild, update, off } from "https://esm.sh/firebase/database";
+// AGREGADO: runTransaction para contar las vistas
+import { getDatabase, ref, push, onValue, query, orderByChild, update, off, runTransaction } from "https://esm.sh/firebase/database";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDM9E8Y_YW-ld8MH8-yKS345hklA0v5P_w",
@@ -30,16 +31,14 @@ function makeLinksClickable(text) {
     });
 }
 
-// --- NUEVA FUNCIÓN: FORMATEAR NÚMEROS (1.5 mil, 1 mill.) ---
+// --- FORMATEAR NÚMEROS (1.5 mil, 1 mill.) ---
 function formatCount(num) {
     if (!num) return 0;
     if (num >= 1000000) {
-        // Agregamos un espacio antes de 'mill.'
-        return (num / 1000000).toFixed(0).replace(/\.0$/, '') + ' mill.';
+        return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' mill.';
     }
     if (num >= 1000) {
-        // Agregamos un espacio antes de 'mil'
-        return (num / 1000).toFixed(0).replace(/\.0$/, '') + ' mil';
+        return (num / 1000).toFixed(1).replace(/\.0$/, '') + ' mil';
     }
     return num;
 }
@@ -136,7 +135,6 @@ function renderThread(key, thread, container) {
         }
     }
 
-    // Lógica Rango
     let displayRank = thread.rank; 
     if (!displayRank && thread.category && !['Publicaciones', 'Foros', 'Sugerencias'].includes(thread.category)) {
         displayRank = thread.category;
@@ -145,10 +143,13 @@ function renderThread(key, thread, container) {
 
     const rawLikeCount = thread.likeCount || 0;
     const rawCommentCount = thread.comments ? Object.keys(thread.comments).length : 0;
+    // AGREGADO: Recuperar vistas
+    const rawViewCount = thread.views || 0;
 
-    // APLICAR FORMATO A LOS NÚMEROS AQUÍ
+    // FORMATO DE NÚMEROS
     const likeCountDisplay = formatCount(rawLikeCount);
     const commentCountDisplay = formatCount(rawCommentCount);
+    const viewCountDisplay = formatCount(rawViewCount);
 
     const userId = getUserId();
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
@@ -176,6 +177,9 @@ function renderThread(key, thread, container) {
             <button class="comment-button" onclick="openComments('${key}')">
                 <i class="far fa-comment"></i> ${commentCountDisplay}
             </button>
+            <span class="view-button" style="color: #aaa; font-weight: bold; font-size: 1em; cursor: default; display: inline-flex; align-items: center; gap: 5px;">
+                <i class="far fa-eye"></i> ${viewCountDisplay}
+            </span>
         </div>
     `;
     container.appendChild(div);
@@ -241,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = "Subiendo...";
             btn.disabled = true;
 
-            // CAPTURA DE CAMPOS
             const rank = document.getElementById('categorySelect').value; 
             const user = document.getElementById('robloxUser').value; 
             const title = document.getElementById('title').value;       
@@ -273,7 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 section: section, 
                 image: mediaUrl,
                 timestamp: Date.now(),
-                displayDate: new Date().toLocaleDateString('es-ES')
+                displayDate: new Date().toLocaleDateString('es-ES'),
+                views: 0 // Iniciamos vistas en 0
             };
 
             push(threadsRef, newPost);
@@ -289,6 +293,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.openComments = function(key) {
+    // AGREGADO: Sumar 1 vista en Firebase
+    const threadViewRef = ref(db, `threads/${key}/views`);
+    runTransaction(threadViewRef, (currentViews) => {
+        return (currentViews || 0) + 1;
+    });
+
     const modal = document.getElementById('commentsModal');
     const list = document.getElementById('commentsList');
     list.innerHTML = '<p style="text-align:center;">Cargando...</p>';
@@ -303,9 +313,7 @@ window.openComments = function(key) {
             Object.values(data).forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
-
                 const commentWithLinks = makeLinksClickable(c.text);
-
                 item.innerHTML = `<span style="color:#00a2ff;font-weight:bold;">${c.username || 'Anon'}:</span> <span style="color:#ddd;">${commentWithLinks}</span>`;
                 list.appendChild(item);
             });
