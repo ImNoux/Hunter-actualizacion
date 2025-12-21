@@ -24,12 +24,22 @@ let allThreadsData = [];
 // --- FUNCIÓN MÁGICA: CONVERTIR TEXTO EN LINKS ---
 function makeLinksClickable(text) {
     if (!text) return '';
-    // Esta expresión regular busca texto que empiece por http:// o https://
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     return text.replace(urlRegex, function(url) {
-        // Devuelve el link azul y que se abre en nueva pestaña
         return `<a href="${url}" target="_blank" style="color: #00a2ff; text-decoration: underline; word-break: break-all;">${url}</a>`;
     });
+}
+
+// --- NUEVA FUNCIÓN: FORMATEAR NÚMEROS (1.5mil, 1mill.) ---
+function formatCount(num) {
+    if (!num) return 0;
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(0).replace(/\.0$/, '') + 'mill.';
+    }
+    if (num >= 1000) {
+        return (num / 1000).toFixed(0).replace(/\.0$/, '') + 'mil';
+    }
+    return num;
 }
 
 // --- PESTAÑAS ---
@@ -131,14 +141,18 @@ function renderThread(key, thread, container) {
     }
     let rankBadge = displayRank ? `<span class="rank-badge">${displayRank}</span>` : '';
 
-    const likeCount = thread.likeCount || 0;
-    const commentCount = thread.comments ? Object.keys(thread.comments).length : 0;
+    const rawLikeCount = thread.likeCount || 0;
+    const rawCommentCount = thread.comments ? Object.keys(thread.comments).length : 0;
+    
+    // APLICAR FORMATO A LOS NÚMEROS AQUÍ
+    const likeCountDisplay = formatCount(rawLikeCount);
+    const commentCountDisplay = formatCount(rawCommentCount);
+
     const userId = getUserId();
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
     const verifyBadge = thread.verificado ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
     const authorName = thread.username || 'Usuario';
 
-    // APLICAMOS LA FUNCIÓN DE LINKS AQUÍ (thread.description)
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
     div.innerHTML = `
@@ -154,11 +168,11 @@ function renderThread(key, thread, container) {
         ${mediaHTML}
         
         <div class="thread-actions">
-            <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${likeCount}, this)">
-                <i class="fas fa-heart"></i> ${likeCount}
+            <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${rawLikeCount}, this)">
+                <i class="fas fa-heart"></i> ${likeCountDisplay}
             </button>
             <button class="comment-button" onclick="openComments('${key}')">
-                <i class="far fa-comment"></i> ${commentCount}
+                <i class="far fa-comment"></i> ${commentCountDisplay}
             </button>
         </div>
     `;
@@ -288,7 +302,6 @@ window.openComments = function(key) {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
                 
-                // APLICAMOS LINKS TAMBIÉN A LOS COMENTARIOS
                 const commentWithLinks = makeLinksClickable(c.text);
 
                 item.innerHTML = `<span style="color:#00a2ff;font-weight:bold;">${c.username || 'Anon'}:</span> <span style="color:#ddd;">${commentWithLinks}</span>`;
