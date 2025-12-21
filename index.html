@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comunidad ARC</title>
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
 
     <script src="https://www.gstatic.com/firebasejs/9.2.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.2.0/firebase-database.js"></script>
-    
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -33,40 +33,47 @@
 
                 <div class="modal-content" id="newThreadModalContent">
                     <span class="close-button" onclick="closeModal('newThreadModalContent')">&times;</span>
-                    
-                    <h2 style="font-size: 1.2em; margin-bottom: 15px;">
-                        Publicar en: <span id="modalSectionTitle" style="color:#00a2ff;">Publicaciones</span>
+
+                    <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">
+                        Crear Publicación
                     </h2>
 
                     <form id="newThreadForm">
                         <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
 
-                        <label for="categorySelect">Categoría:</label>
-                        <select id="categorySelect" required>
-                            <option value="Hunter">Hunter</option>
-                            <option value="Creator">Creator</option>
-                            <option value="Elite">Elite</option>
-                            <option value="Designer">Designer</option>
-                            <option value="Top Model">Top Model</option>
-                            <option value="Mentor">Mentor</option>
-                            <option value="Cheerleader">Cheerleader</option>
-                            <option value="Moon & Sun">Moon & Sun</option>
-                        </select>
-                        <br><br>
+                        <div class="form-group">
+                            <label for="categorySelect">Selecciona tu Rango:</label>
+                            <select id="categorySelect" required>
+                                <option value="" disabled selected>-- Elige una opción --</option>
+                                <option value="Hunter">Hunter</option>
+                                <option value="Creator">Creator</option>
+                                <option value="Elite">Elite</option>
+                                <option value="Designer">Designer</option>
+                                <option value="Top Model">Top Model</option>
+                                <option value="Mentor">Mentor</option>
+                                <option value="Cheerleader">Cheerleader</option>
+                                <option value="Moon & Sun">Moon & Sun</option>
+                            </select>
+                        </div>
 
-                        <label for="title">Título:</label>
-                        <input type="text" id="title" name="title" placeholder="Título..." required><br><br>
+                        <div class="form-group">
+                            <label for="title">Usuario de Roblox:</label>
+                            <input type="text" id="title" name="title" placeholder="Ej: ARC_KIUXT" required autocomplete="off">
+                        </div>
 
-                        <label for="description">Descripción:</label>
-                        <textarea id="description" name="description" placeholder="Contenido..." required rows="3"></textarea><br><br>
+                        <div class="form-group">
+                            <label for="description">Descripción:</label>
+                            <textarea id="description" name="description" placeholder="Escribe aquí los detalles..." required rows="4"></textarea>
+                        </div>
 
-                        <label for="imageFile" class="upload-btn">
-                            <i class="fas fa-cloud-upload-alt"></i> Subir Foto o Video
+                        <label for="imageFile" class="upload-btn-gray">
+                            <i class="fas fa-image"></i> Agregar Foto o Video
                         </label>
                         <input type="file" id="imageFile" accept="image/*, video/*" style="display:none;">
-                        <p id="fileName" style="font-size:0.8em; color:#00a2ff; text-align:center; margin-top:5px; height:15px; margin-bottom: 15px;"></p>
+                        
+                        <p id="fileName" class="file-name-display"></p>
 
-                        <button type="submit" id="submitBtn">Publicar</button>
+                        <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
                     </form>
                 </div>
             </div>
@@ -75,7 +82,7 @@
         <nav class="nav-tabs">
             <button class="tab-btn active" onclick="changeSection('Publicaciones')">Publicaciones</button>
             <button class="tab-btn" onclick="changeSection('Foros')">Foros</button>
-            </nav>
+        </nav>
     </header>
 
     <div id="commentsModal" class="modal-overlay">
@@ -90,8 +97,8 @@
             </form>
         </div>
     </div>
-    
-    <div id="updatesModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('updatesModal')">&times;</span><h2>Actualizaciones</h2><p>Diseño simplificado.</p></div></div>
+
+    <div id="updatesModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('updatesModal')">&times;</span><h2>Actualizaciones</h2><p>Diseño simplificado y moderno.</p></div></div>
     <div id="aboutModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('aboutModal')">&times;</span><h2>ARC</h2></div></div>
     <div id="contactModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('contactModal')">&times;</span><h2>Discord</h2></div></div>
 
@@ -118,7 +125,14 @@
             document.getElementById(id).style.display = 'block'; 
         }
         document.getElementById('imageFile').onchange = function() {
-            if(this.files[0]) document.getElementById('fileName').textContent = this.files[0].name;
+            if(this.files[0]) {
+                let name = this.files[0].name;
+                // Acortar nombre si es muy largo
+                if(name.length > 25) name = name.substring(0, 25) + '...';
+                document.getElementById('fileName').textContent = name;
+            } else {
+                document.getElementById('fileName').textContent = "";
+            }
         };
         window.toggleMenu = toggleMenu;
     </script>
