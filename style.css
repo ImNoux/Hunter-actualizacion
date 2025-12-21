@@ -91,7 +91,7 @@ main { padding: 20px; max-width: 800px; margin: 0 auto; position: relative; z-in
     border-radius: 4px; border: 1px solid #333; margin-top: 10px; display: block;
 }
 
-/* Etiqueta de Rango (Hunter, Creator, etc.) */
+/* Etiqueta de Rango (MODIFICADO: Margen a la derecha para que salga antes del nombre) */
 .rank-badge {
     background-color: #333;
     color: #00a2ff;
@@ -100,7 +100,7 @@ main { padding: 20px; max-width: 800px; margin: 0 auto; position: relative; z-in
     border-radius: 12px;
     border: 1px solid #00a2ff;
     vertical-align: middle;
-    margin-left: 8px;
+    margin-right: 8px; /* Antes era margin-left */
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -108,23 +108,19 @@ main { padding: 20px; max-width: 800px; margin: 0 auto; position: relative; z-in
 /* --- 5. FORMULARIOS Y MODALES (CORREGIDO PARA MÓVIL) --- */
 .modal-content {
     display: none; 
-    /* Cambiamos a fixed para centrarlo siempre en la pantalla */
     position: fixed; 
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%); /* Esto lo centra perfectamente */
+    transform: translate(-50%, -50%); 
     
-    width: 90%; /* Se adapta al ancho del celular */
-    max-width: 400px; /* No se hace gigante en PC */
+    width: 90%; 
+    max-width: 400px; 
     
-    /* --- AQUÍ ESTÁ EL ARREGLO --- */
-    max-height: 85vh; /* Altura máxima del 85% de la pantalla */
-    overflow-y: auto; /* Activa el SCROLL dentro del cuadro si no cabe */
-    /* --------------------------- */
+    max-height: 85vh; 
+    overflow-y: auto; 
 
     z-index: 3000;
     
-    /* Estilo Visual */
     background-color: #2b2d31;
     border: 2px solid #1e1f22;
     border-radius: 12px;
