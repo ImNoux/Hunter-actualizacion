@@ -26,7 +26,7 @@ let allThreadsData = []; // AQUÍ GUARDAMOS TODOS LOS DATOS (MEMORIA)
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
     currentPage = 1;
-    
+
     // 1. Actualizar botones visualmente
     document.querySelectorAll('.tab-btn').forEach(btn => {
         if(btn.textContent.trim() === sectionName) btn.classList.add('active');
@@ -55,7 +55,7 @@ function getUserId() {
 // --- CONEXIÓN ÚNICA A FIREBASE (INIT) ---
 function initFirebaseListener() {
     const getThreads = query(threadsRef, orderByChild('timestamp'));
-    
+
     // Escuchamos una sola vez. Cada vez que alguien publique algo nuevo, esto se ejecuta solo.
     onValue(getThreads, (snapshot) => {
         const data = snapshot.val();
@@ -75,14 +75,14 @@ function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
     const noThreadsMessage = document.getElementById('noThreadsMessage');
     const paginationContainer = document.getElementById('pagination-container');
-    
+
     threadContainer.innerHTML = '';
     paginationContainer.innerHTML = '';
 
     // FILTRAR los datos que ya tenemos en memoria
     let filtered = allThreadsData.filter(([key, thread]) => {
         const matchesSearch = thread.title.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
         // Lógica de compatibilidad para posts antiguos
         let postSection = thread.section; 
         let postCategory = thread.category;
@@ -103,7 +103,7 @@ function renderCurrentView() {
     // MOSTRAR RESULTADOS
     if (filtered.length > 0) {
         noThreadsMessage.style.display = 'none';
-        
+
         // Paginación local
         const start = (currentPage - 1) * threadsPerPage;
         const end = start + threadsPerPage;
@@ -112,7 +112,7 @@ function renderCurrentView() {
         pageThreads.forEach(([key, thread]) => {
             renderThread(key, thread, threadContainer);
         });
-        
+
         renderPagination(filtered.length);
     } else {
         noThreadsMessage.style.display = 'block';
@@ -124,7 +124,7 @@ function renderCurrentView() {
 function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.classList.add('thread');
-    
+
     // Media
     let mediaHTML = '';
     if (thread.image) {
@@ -141,7 +141,7 @@ function renderThread(key, thread, container) {
     if (!displayRank && thread.category && !['Publicaciones', 'Foros', 'Sugerencias'].includes(thread.category)) {
         displayRank = thread.category; // Compatibilidad
     }
-    
+
     let rankBadge = '';
     if (displayRank) {
         rankBadge = `<span class="rank-badge">${displayRank}</span>`;
@@ -153,6 +153,8 @@ function renderThread(key, thread, container) {
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
     const verifyBadge = thread.verificado ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
 
+    // ESTRUCTURA DE LA TARJETA
+    // Muestra: USUARIO [RANGO]
     div.innerHTML = `
         <div class="thread-date">${thread.displayDate}</div>
         <h2>${thread.title} ${rankBadge} ${verifyBadge}</h2>
@@ -201,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Configuramos vista inicial
     changeSection('Publicaciones'); 
-    
+
     document.getElementById('searchInput').oninput = (e) => {
         searchTerm = e.target.value;
         currentPage = 1;
@@ -223,12 +225,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.textContent = "Subiendo...";
         btn.disabled = true;
 
-        const title = document.getElementById('title').value;
+        // Capturamos los datos del nuevo formulario
+        const title = document.getElementById('title').value; // Ahora es el Usuario
         const desc = document.getElementById('description').value;
         const section = document.getElementById('sectionInput').value; 
-        const rank = document.getElementById('categorySelect').value; 
+        const rank = document.getElementById('categorySelect').value; // El rango seleccionado
         const fileInput = document.getElementById('imageFile');
-        
+
         let mediaUrl = '';
         if(fileInput.files[0]) {
             const formData = new FormData();
@@ -255,13 +258,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         push(threadsRef, newPost);
-        
+
         form.reset();
         document.getElementById('fileName').textContent = '';
         modal.style.display = 'none';
         btn.textContent = originalText;
         btn.disabled = false;
-        
+
         // Restaurar input de sección
         document.getElementById('sectionInput').value = currentSection;
     };
