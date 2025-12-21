@@ -1,64 +1,127 @@
- <!DOCTYPE html>
-
+<!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reclutamientos</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Firebase SDK -->
+    <title>Comunidad ARC</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+
     <script src="https://www.gstatic.com/firebasejs/9.2.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.2.0/firebase-database.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+
     <header>
-        <h1>Reclutamientos</h1>
-        <div id="newThreadButtonContainer">
-            <button id="newThreadButton">+ Nuevo</button>
-            <div class="modal-content" id="newThreadModalContent">
-                <span class="close-button">&times;</span>
-                <h2>Crear Nuevo Hilo</h2>
-                <form id="newThreadForm">
-                    <label for="category">Categoría:</label>
-                    <input type="text" id="category" name="category" value="Hunter" readonly><br><br>
+        <div class="header-top">
+            <div class="menu-container">
+                <button class="menu-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i> Menú</button>
+                <div id="menuDropdown" class="menu-dropdown">
+                    <a href="#" onclick="openModal('updatesModal')">Actualizaciones</a>
+                    <a href="#" onclick="openModal('aboutModal')">Quiénes somos</a>
+                    <a href="#" onclick="openModal('contactModal')">Contactos</a>
+                </div>
+            </div>
 
-                    <label for="title">Título:</label>
-                    <input type="text" id="title" name="title" placeholder="ej. insertar usuario de roblox"
-                        required><br><br>
+            <h1>COMUNIDAD ARC</h1>
 
-                    <label for="description">Descripción:</label>
-                    <input type="text" id="description" name="description"
-                        placeholder="ej. inserte @(ig de la persona que te reclutó)" required><br><br>
+            <div id="newThreadButtonContainer">
+                <button id="newThreadButton">+ Nuevo</button>
 
-                    <button type="submit">Publicar Hilo</button>
-                </form>
+                <div class="modal-content" id="newThreadModalContent">
+                    <span class="close-button" onclick="closeModal('newThreadModalContent')">&times;</span>
+                    
+                    <h2 style="font-size: 1.2em; margin-bottom: 15px;">
+                        Publicar en: <span id="modalSectionTitle" style="color:#00a2ff;">Publicaciones</span>
+                    </h2>
+
+                    <form id="newThreadForm">
+                        <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
+
+                        <label for="categorySelect">Categoría:</label>
+                        <select id="categorySelect" required>
+                            <option value="Hunter">Hunter</option>
+                            <option value="Creator">Creator</option>
+                            <option value="Elite">Elite</option>
+                            <option value="Designer">Designer</option>
+                            <option value="Top Model">Top Model</option>
+                            <option value="Mentor">Mentor</option>
+                            <option value="Cheerleader">Cheerleader</option>
+                            <option value="Moon & Sun">Moon & Sun</option>
+                        </select>
+                        <br><br>
+
+                        <label for="title">Título:</label>
+                        <input type="text" id="title" name="title" placeholder="Título..." required><br><br>
+
+                        <label for="description">Descripción:</label>
+                        <textarea id="description" name="description" placeholder="Contenido..." required rows="3"></textarea><br><br>
+
+                        <label for="imageFile" class="upload-btn">
+                            <i class="fas fa-cloud-upload-alt"></i> Subir Foto o Video
+                        </label>
+                        <input type="file" id="imageFile" accept="image/*, video/*" style="display:none;">
+                        <p id="fileName" style="font-size:0.8em; color:#00a2ff; text-align:center; margin-top:5px; height:15px; margin-bottom: 15px;"></p>
+
+                        <button type="submit" id="submitBtn">Publicar</button>
+                    </form>
+                </div>
             </div>
         </div>
+
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="changeSection('Publicaciones')">Publicaciones</button>
+            <button class="tab-btn" onclick="changeSection('Foros')">Foros</button>
+            <button class="tab-btn" onclick="changeSection('Sugerencias')">Sugerencias</button>
+        </nav>
     </header>
 
-    <input type="text" id="searchInput" placeholder="Buscar por título...">
+    <div id="commentsModal" class="modal-overlay">
+        <div class="comments-content">
+            <span class="close-button" onclick="closeModal('commentsModal')">&times;</span>
+            <h3 id="commentsTitle">Comentarios</h3>
+            <div id="commentsList"><p style="text-align:center;">Cargando...</p></div>
+            <form id="commentForm">
+                <input type="text" id="usernameInput" placeholder="User" required autocomplete="off" maxlength="15">
+                <input type="text" id="commentInput" placeholder="..." required autocomplete="off">
+                <button type="submit"><i class="fas fa-paper-plane"></i></button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="updatesModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('updatesModal')">&times;</span><h2>Actualizaciones</h2><p>Mejoras de rendimiento.</p></div></div>
+    <div id="aboutModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('aboutModal')">&times;</span><h2>ARC</h2></div></div>
+    <div id="contactModal" class="modal-overlay"><div class="info-content"><span class="close-button" onclick="closeModal('contactModal')">&times;</span><h2>Discord</h2></div></div>
+
+    <input type="text" id="searchInput" placeholder="Buscar...">
 
     <main>
         <div class="thread-container">
-            <p id="noThreadsMessage">No hay hilos aún. Sé el primero.</p>
-            <!-- Aquí irán los hilos -->
+            <p id="noThreadsMessage">No hay contenido aquí.</p>
         </div>
-        <div id="pagination-container">
-        </div>
+        <div id="pagination-container"></div>
     </main>
 
     <footer>
-        <p><a href="https://www.instagram.com/arc_clxn?igsh=djhzazNnbmFzOXIy">ARC_CLXN</a> &copy; 2025. Todos los
-            derechos reservados.</p>
-        <p class="version">v1.0.0</p>
+        <p>ARC_CLXN &copy; 2025</p>
     </footer>
 
+    <div id="floating-robux-container"></div>
     <script type="module" src="script.js"></script>
+    <script>
+        function toggleMenu() { document.getElementById("menuDropdown").classList.toggle("show"); }
+        window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+        window.openModal = (id) => { 
+            document.getElementById("menuDropdown").classList.remove('show');
+            document.getElementById(id).style.display = 'block'; 
+        }
+        document.getElementById('imageFile').onchange = function() {
+            if(this.files[0]) document.getElementById('fileName').textContent = this.files[0].name;
+        };
+        window.toggleMenu = toggleMenu;
+    </script>
 </body>
-
 </html>
