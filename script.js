@@ -21,6 +21,17 @@ let searchTerm = '';
 let currentSection = 'Publicaciones'; 
 let allThreadsData = []; 
 
+// --- FUNCIÓN MÁGICA: CONVERTIR TEXTO EN LINKS ---
+function makeLinksClickable(text) {
+    if (!text) return '';
+    // Esta expresión regular busca texto que empiece por http:// o https://
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, function(url) {
+        // Devuelve el link azul y que se abre en nueva pestaña
+        return `<a href="${url}" target="_blank" style="color: #00a2ff; text-decoration: underline; word-break: break-all;">${url}</a>`;
+    });
+}
+
 // --- PESTAÑAS ---
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
@@ -125,9 +136,10 @@ function renderThread(key, thread, container) {
     const userId = getUserId();
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
     const verifyBadge = thread.verificado ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
-    
-    // Usuario / Autor (Nuevo)
     const authorName = thread.username || 'Usuario';
+
+    // APLICAMOS LA FUNCIÓN DE LINKS AQUÍ (thread.description)
+    const descriptionWithLinks = makeLinksClickable(thread.description);
 
     div.innerHTML = `
         <div class="thread-date">${thread.displayDate}</div>
@@ -138,7 +150,7 @@ function renderThread(key, thread, container) {
 
         <h2>${thread.title} ${verifyBadge}</h2>
         
-        <p>${thread.description}</p>
+        <p>${descriptionWithLinks}</p>
         ${mediaHTML}
         
         <div class="thread-actions">
@@ -213,10 +225,10 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = "Subiendo...";
             btn.disabled = true;
 
-            // CAPTURA DE CAMPOS NUEVOS
+            // CAPTURA DE CAMPOS
             const rank = document.getElementById('categorySelect').value; 
-            const user = document.getElementById('robloxUser').value; // Usuario
-            const title = document.getElementById('title').value;       // Título
+            const user = document.getElementById('robloxUser').value; 
+            const title = document.getElementById('title').value;       
             const desc = document.getElementById('description').value;
             const section = document.getElementById('sectionInput').value; 
             const fileInput = document.getElementById('imageFile');
@@ -238,9 +250,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const newPost = {
-                title: title,      // Título real
-                username: user,    // Usuario separado
-                rank: rank,        // Rango
+                title: title,      
+                username: user,    
+                rank: rank,        
                 description: desc,
                 section: section, 
                 image: mediaUrl,
@@ -275,7 +287,11 @@ window.openComments = function(key) {
             Object.values(data).forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
-                item.innerHTML = `<span style="color:#00a2ff;font-weight:bold;">${c.username || 'Anon'}:</span> ${c.text}`;
+                
+                // APLICAMOS LINKS TAMBIÉN A LOS COMENTARIOS
+                const commentWithLinks = makeLinksClickable(c.text);
+
+                item.innerHTML = `<span style="color:#00a2ff;font-weight:bold;">${c.username || 'Anon'}:</span> <span style="color:#ddd;">${commentWithLinks}</span>`;
                 list.appendChild(item);
             });
         } else {
