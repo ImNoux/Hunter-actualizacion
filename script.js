@@ -1,5 +1,4 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
-// AGREGADO: runTransaction para contar las vistas
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, runTransaction } from "https://esm.sh/firebase/database";
 
 const firebaseConfig = {
@@ -31,15 +30,20 @@ function makeLinksClickable(text) {
     });
 }
 
-// --- FORMATEAR NÚMEROS (1.5 mil, 1 mill.) ---
+// --- FORMATEAR NÚMEROS (12.6 mil, 1.5 Mill.) ---
 function formatCount(num) {
     if (!num) return 0;
+    
+    // MILLONES: 1 decimal, quitamos .0 si es entero
     if (num >= 1000000) {
-        return (num / 1000000).toFixed(0).replace(/\.0$/, '') + ' mill.';
+        return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' Mill.';
     }
+    
+    // MILES: 1 decimal, quitamos .0 si es entero
     if (num >= 1000) {
-        return (num / 1000).toFixed(0).replace(/\.0$/, '') + ' mil';
+        return (num / 1000).toFixed(1).replace(/\.0$/, '') + ' mil';
     }
+    
     return num;
 }
 
@@ -143,16 +147,16 @@ function renderThread(key, thread, container) {
 
     const rawLikeCount = thread.likeCount || 0;
     const rawCommentCount = thread.comments ? Object.keys(thread.comments).length : 0;
-    // AGREGADO: Recuperar vistas
     const rawViewCount = thread.views || 0;
 
-    // FORMATO DE NÚMEROS
+    // APLICAR FORMATO A LOS NÚMEROS
     const likeCountDisplay = formatCount(rawLikeCount);
     const commentCountDisplay = formatCount(rawCommentCount);
     const viewCountDisplay = formatCount(rawViewCount);
 
     const userId = getUserId();
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
+    // Badge de verificado
     const verifyBadge = thread.verificado ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
     const authorName = thread.username || 'Usuario';
 
@@ -162,10 +166,10 @@ function renderThread(key, thread, container) {
         <div class="thread-date">${thread.displayDate}</div>
         
         <div style="margin-bottom: 5px; font-size: 0.9em; color: #aaa;">
-            ${rankBadge} <strong style="color: #fff;">${authorName}</strong>
+            ${rankBadge} <strong style="color: #fff;">${authorName}</strong> ${verifyBadge}
         </div>
 
-        <h2>${thread.title} ${verifyBadge}</h2>
+        <h2>${thread.title}</h2>
         
         <p>${descriptionWithLinks}</p>
         ${mediaHTML}
@@ -293,7 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.openComments = function(key) {
-    // AGREGADO: Sumar 1 vista en Firebase
     const threadViewRef = ref(db, `threads/${key}/views`);
     runTransaction(threadViewRef, (currentViews) => {
         return (currentViews || 0) + 1;
