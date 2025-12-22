@@ -21,6 +21,14 @@ let searchTerm = '';
 let currentSection = 'Publicaciones'; 
 let allThreadsData = []; 
 
+// --- LISTA DE USUARIOS VERIFICADOS (Verificación Automática) ---
+const verifiedUsers = [
+    "ARC_KIUXT", 
+    "Admin", 
+    "HunterLeader"
+    // Agrega más nombres aquí
+];
+
 // --- FUNCIÓN MÁGICA: CONVERTIR TEXTO EN LINKS ---
 function makeLinksClickable(text) {
     if (!text) return '';
@@ -30,20 +38,15 @@ function makeLinksClickable(text) {
     });
 }
 
-// --- FORMATEAR NÚMEROS (12.6 mil, 1.5 Mill.) ---
+// --- FORMATEAR NÚMEROS (12.6 mil, 1 mill.) ---
 function formatCount(num) {
     if (!num) return 0;
-    
-    // MILLONES: 1 decimal, quitamos .0 si es entero
     if (num >= 1000000) {
         return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' Mill.';
     }
-    
-    // MILES: 1 decimal, quitamos .0 si es entero
     if (num >= 1000) {
         return (num / 1000).toFixed(1).replace(/\.0$/, '') + ' mil';
     }
-    
     return num;
 }
 
@@ -149,16 +152,19 @@ function renderThread(key, thread, container) {
     const rawCommentCount = thread.comments ? Object.keys(thread.comments).length : 0;
     const rawViewCount = thread.views || 0;
 
-    // APLICAR FORMATO A LOS NÚMEROS
     const likeCountDisplay = formatCount(rawLikeCount);
     const commentCountDisplay = formatCount(rawCommentCount);
     const viewCountDisplay = formatCount(rawViewCount);
 
     const userId = getUserId();
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
-    // Badge de verificado
-    const verifyBadge = thread.verificado ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
     const authorName = thread.username || 'Usuario';
+
+    // VERIFICACIÓN AUTOMÁTICA
+    const isVerifiedAuto = verifiedUsers.some(u => u.toLowerCase() === authorName.toLowerCase());
+    const verifyBadge = (isVerifiedAuto || thread.verificado) 
+        ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' 
+        : '';
 
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
@@ -216,6 +222,19 @@ document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     changeSection('Publicaciones'); 
 
+    // --- NUEVO: LÓGICA DE USUARIO FIJO ---
+    const robloxInput = document.getElementById('robloxUser');
+    const savedRobloxUser = localStorage.getItem('savedRobloxUser');
+    
+    // Si ya existe un usuario guardado, lo ponemos y bloqueamos el campo
+    if(savedRobloxUser && robloxInput) {
+        robloxInput.value = savedRobloxUser;
+        robloxInput.disabled = true; // Bloqueado
+        robloxInput.style.backgroundColor = '#252525'; // Un poco más oscuro para indicar bloqueo
+        robloxInput.style.cursor = 'not-allowed';
+        robloxInput.title = "Nombre de usuario fijo. No se puede cambiar.";
+    }
+
     const searchIn = document.getElementById('searchInput');
     if(searchIn) {
         searchIn.oninput = (e) => {
@@ -250,12 +269,25 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
 
             const rank = document.getElementById('categorySelect').value; 
+            // Obtenemos el valor del usuario (incluso si está disabled)
             const user = document.getElementById('robloxUser').value; 
             const title = document.getElementById('title').value;       
             const desc = document.getElementById('description').value;
             const section = document.getElementById('sectionInput').value; 
             const fileInput = document.getElementById('imageFile');
             const modal = document.getElementById('newThreadModalContent');
+
+            // --- NUEVO: SI NO ESTÁ GUARDADO, LO GUARDAMOS AHORA ---
+            if(!localStorage.getItem('savedRobloxUser')) {
+                localStorage.setItem('savedRobloxUser', user);
+                // Inmediatamente bloqueamos el input para el futuro
+                const rInput = document.getElementById('robloxUser');
+                if(rInput) {
+                    rInput.disabled = true;
+                    rInput.style.backgroundColor = '#252525';
+                    rInput.style.cursor = 'not-allowed';
+                }
+            }
 
             let mediaUrl = '';
             if(fileInput && fileInput.files[0]) {
@@ -281,11 +313,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 image: mediaUrl,
                 timestamp: Date.now(),
                 displayDate: new Date().toLocaleDateString('es-ES'),
-                views: 0 // Iniciamos vistas en 0
+                views: 0 
             };
 
             push(threadsRef, newPost);
             form.reset();
+            
+            // OJO: Al resetear el form, el input disabled se borra visualmente.
+            // Hay que volver a poner el valor guardado.
+            if(localStorage.getItem('savedRobloxUser')) {
+                document.getElementById('robloxUser').value = localStorage.getItem('savedRobloxUser');
+            }
+
             document.getElementById('fileName').textContent = '';
             if(modal) modal.style.display = 'none';
             btn.textContent = originalText;
@@ -306,6 +345,15 @@ window.openComments = function(key) {
     const list = document.getElementById('commentsList');
     list.innerHTML = '<p style="text-align:center;">Cargando...</p>';
     modal.style.display = 'block';
+
+    // --- NUEVO: USUARIO FIJO EN COMENTARIOS TAMBIÉN ---
+    const usernameInput = document.getElementById('usernameInput');
+    const savedUser = localStorage.getItem('savedRobloxUser');
+    if(savedUser && usernameInput) {
+        usernameInput.value = savedUser;
+        usernameInput.disabled = true;
+        usernameInput.style.backgroundColor = '#252525';
+    }
 
     const commentsRef = ref(db, `threads/${key}/comments`);
     off(commentsRef);
@@ -330,7 +378,14 @@ window.openComments = function(key) {
         cForm.onsubmit = (e) => {
             e.preventDefault();
             const txt = document.getElementById('commentInput').value;
+            // Obtenemos el valor del input (incluso si está disabled)
             const usr = document.getElementById('usernameInput').value || 'Anónimo';
+            
+            // Si el usuario no estaba guardado (primera vez comentando), lo guardamos
+            if(!localStorage.getItem('savedRobloxUser') && usr !== 'Anónimo') {
+                localStorage.setItem('savedRobloxUser', usr);
+            }
+
             push(commentsRef, { text: txt, username: usr, timestamp: Date.now() });
             document.getElementById('commentInput').value = '';
         }
