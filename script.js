@@ -15,16 +15,26 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const threadsRef = ref(db, 'threads');
 const usersRef = ref(db, 'users'); 
-const verifiedRef = ref(db, 'verified'); // NUEVA REFERENCIA PARA VERIFICADOS
+const verifiedRef = ref(db, 'verified'); 
 
 const threadsPerPage = 10;
 let currentPage = 1;
 let searchTerm = '';
 let currentSection = 'Publicaciones'; 
 let allThreadsData = []; 
-let verifiedUsersList = []; // Aquí guardaremos los verificados que vienen de la BD
+let verifiedUsersList = []; 
 
-// --- FUNCIÓN MÁGICA: CONVERTIR TEXTO EN LINKS ---
+function showError(msg) {
+    const alertModal = document.getElementById('customAlertModal');
+    const alertText = document.getElementById('customAlertText');
+    if(alertModal && alertText) {
+        alertText.innerHTML = msg; 
+        alertModal.style.display = 'block';
+    } else {
+        alert(msg); 
+    }
+}
+
 function makeLinksClickable(text) {
     if (!text) return '';
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -33,7 +43,6 @@ function makeLinksClickable(text) {
     });
 }
 
-// --- FORMATEAR NÚMEROS ---
 function formatCount(num) {
     if (!num) return 0;
     if (num >= 1000000) {
@@ -45,7 +54,6 @@ function formatCount(num) {
     return num;
 }
 
-// --- PESTAÑAS ---
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
     currentPage = 1;
@@ -69,9 +77,7 @@ function getUserId() {
     return userId;
 }
 
-// --- FIREBASE INIT (ESCUCHADORES) ---
 function initFirebaseListener() {
-    // 1. Escuchar Publicaciones
     const getThreads = query(threadsRef, orderByChild('timestamp'));
     onValue(getThreads, (snapshot) => {
         const data = snapshot.val();
@@ -83,21 +89,17 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 
-    // 2. Escuchar Verificados (NUEVO)
     onValue(verifiedRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            // Convertimos las llaves del objeto en un array de nombres
-            // Estructura en BD: verified -> { "ARC_KIUXT": true, "Admin": true }
             verifiedUsersList = Object.keys(data).map(name => name.toLowerCase());
         } else {
             verifiedUsersList = [];
         }
-        renderCurrentView(); // Actualizamos la vista por si alguien recibió la insignia en vivo
+        renderCurrentView(); 
     });
 }
 
-// --- RENDERIZADO ---
 function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
     const noThreadsMessage = document.getElementById('noThreadsMessage');
@@ -141,13 +143,90 @@ function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.classList.add('thread');
 
+    // --- LÓGICA DE CARRUSEL CON PUNTOS Y CONTADOR ---
     let mediaHTML = '';
-    if (thread.image) {
+    
+    // CASO 1: MÚLTIPLES IMÁGENES (CARRUSEL)
+    if (thread.images && Array.isArray(thread.images) && thread.images.length > 0) {
+        
+        const totalImages = thread.images.length;
+        
+        // 1. Crear el Wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'media-wrapper';
+
+        // 2. Crear el Contador (1/4)
+        const counter = document.createElement('div');
+        counter.className = 'carousel-counter';
+        counter.innerText = `1/${totalImages}`;
+        wrapper.appendChild(counter);
+
+        // 3. Crear el Carrusel
+        const carousel = document.createElement('div');
+        carousel.className = 'media-carousel';
+        
+        thread.images.forEach(url => {
+            const isVideo = url.match(/\.(mp4|webm)|video\/upload/i);
+            if(isVideo) {
+                // Video simple
+                const vid = document.createElement('video');
+                vid.src = url;
+                vid.controls = true;
+                vid.preload = "metadata";
+                carousel.appendChild(vid);
+            } else {
+                // Imagen simple
+                const img = document.createElement('img');
+                img.src = url;
+                img.loading = "lazy";
+                carousel.appendChild(img);
+            }
+        });
+        wrapper.appendChild(carousel);
+
+        // 4. Crear los Puntos (Dots)
+        const dotsContainer = document.createElement('div');
+        dotsContainer.className = 'carousel-dots';
+        
+        // Generamos un punto por cada imagen
+        for(let i = 0; i < totalImages; i++) {
+            const dot = document.createElement('div');
+            dot.className = i === 0 ? 'dot active' : 'dot';
+            dotsContainer.appendChild(dot);
+        }
+        wrapper.appendChild(dotsContainer);
+
+        // 5. EVENTO DE SCROLL (LA MAGIA)
+        carousel.addEventListener('scroll', () => {
+            // Calculamos qué imagen se ve (scrollLeft / ancho del contenedor)
+            const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+            
+            // Actualizar texto 1/N
+            counter.innerText = `${index + 1}/${totalImages}`;
+            
+            // Actualizar puntos
+            const allDots = dotsContainer.querySelectorAll('.dot');
+            allDots.forEach((d, i) => {
+                if(i === index) d.classList.add('active');
+                else d.classList.remove('active');
+            });
+        });
+
+        // Convertir el wrapper a HTML String para insertarlo en el template
+        mediaHTML = wrapper.outerHTML;
+
+        // NOTA IMPORTANTE: Como insertamos HTML como texto, el evento 'scroll' se perdería.
+        // TRUCO: Volvemos a asignar el evento después de insertar el HTML al DOM.
+        // Lo haremos al final de esta función.
+
+    } 
+    // CASO 2: IMAGEN ÚNICA (Compatibilidad vieja)
+    else if (thread.image) {
         const isVideo = thread.image.match(/\.(mp4|webm)|video\/upload/i);
         if (isVideo) {
-            mediaHTML = `<div style="background:#000;border-radius:4px;margin-top:10px;overflow:hidden;"><video src="${thread.image}" controls autoplay muted loop style="width:100%;display:block;"></video></div>`;
+            mediaHTML = `<div style="background:#000;border-radius:4px;margin-top:10px;overflow:hidden;"><video src="${thread.image}" controls style="width:100%;display:block;"></video></div>`;
         } else {
-            mediaHTML = `<img src="${thread.image}" alt="Media">`;
+            mediaHTML = `<img src="${thread.image}" alt="Media" style="width:100%; margin-top:10px; border-radius:4px;">`;
         }
     }
 
@@ -169,27 +248,25 @@ function renderThread(key, thread, container) {
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
     const authorName = thread.username || 'Usuario';
 
-    // VERIFICACIÓN DESDE FIREBASE
-    // Comprobamos si el nombre está en la lista que bajamos de la base de datos
     const isVerifiedAuto = verifiedUsersList.includes(authorName.toLowerCase());
-    
     const verifyBadge = (isVerifiedAuto || thread.verificado) 
         ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' 
         : '';
 
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
+    // Inyectamos el HTML
     div.innerHTML = `
         <div class="thread-date">${thread.displayDate}</div>
-        
         <div style="margin-bottom: 5px; font-size: 0.9em; color: #aaa;">
             ${rankBadge} <strong style="color: #fff;">${authorName}</strong> ${verifyBadge}
         </div>
-
         <h2>${thread.title}</h2>
-        
         <p>${descriptionWithLinks}</p>
-        ${mediaHTML}
+        
+        <div class="media-container-hook-${key}">
+            ${mediaHTML}
+        </div>
         
         <div class="thread-actions">
             <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${rawLikeCount}, this)">
@@ -204,6 +281,29 @@ function renderThread(key, thread, container) {
         </div>
     `;
     container.appendChild(div);
+
+    // --- REACTIVAR EVENTOS DE SCROLL ---
+    // Como usamos innerHTML, los listeners creados arriba mueren. Los resucitamos aquí.
+    if (thread.images && thread.images.length > 0) {
+        const injectedWrapper = div.querySelector(`.media-container-hook-${key} .media-wrapper`);
+        if(injectedWrapper) {
+            const carousel = injectedWrapper.querySelector('.media-carousel');
+            const counter = injectedWrapper.querySelector('.carousel-counter');
+            const dots = injectedWrapper.querySelectorAll('.dot');
+            const total = thread.images.length;
+
+            if(carousel && counter) {
+                carousel.addEventListener('scroll', () => {
+                    const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+                    counter.innerText = `${index + 1}/${total}`;
+                    dots.forEach((d, i) => {
+                        if(i === index) d.classList.add('active');
+                        else d.classList.remove('active');
+                    });
+                });
+            }
+        }
+    }
 }
 
 window.toggleLike = function(key, currentCount, btn) {
@@ -229,21 +329,16 @@ function renderPagination(totalItems) {
     }
 }
 
-// --- FUNCIÓN AUXILIAR: VERIFICAR SI EL USUARIO ESTÁ LIBRE ---
 async function checkUsernameAvailability(username) {
     const normalizedUser = username.toLowerCase().trim();
-    // Referencia a users/nombreusuario
     const userRef = child(usersRef, normalizedUser);
     
     const snapshot = await get(userRef);
-    
     if (snapshot.exists()) {
-        // EL USUARIO EXISTE EN LA BASE DE DATOS
         if (localStorage.getItem('savedRobloxUser') !== username) {
-            return false; // No disponible (Impostor)
+            return false; 
         }
     } else {
-        // EL USUARIO NO EXISTE, LO REGISTRAMOS
         await set(userRef, { registeredAt: Date.now() });
     }
     return true; 
@@ -254,7 +349,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     changeSection('Publicaciones'); 
 
-    // BLOQUEO VISUAL AL INICIAR
     const robloxInput = document.getElementById('robloxUser');
     const savedRobloxUser = localStorage.getItem('savedRobloxUser');
     
@@ -298,74 +392,93 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = "Verificando...";
             btn.disabled = true;
 
-            const rank = document.getElementById('categorySelect').value; 
-            const user = document.getElementById('robloxUser').value.trim(); 
-            const title = document.getElementById('title').value;       
-            const desc = document.getElementById('description').value;
-            const section = document.getElementById('sectionInput').value; 
-            const fileInput = document.getElementById('imageFile');
-            const modal = document.getElementById('newThreadModalContent');
+            try { 
+                const rank = document.getElementById('categorySelect').value; 
+                const user = document.getElementById('robloxUser').value.trim(); 
+                const title = document.getElementById('title').value;       
+                const desc = document.getElementById('description').value;
+                const section = document.getElementById('sectionInput').value; 
+                const fileInput = document.getElementById('imageFile');
+                const modal = document.getElementById('newThreadModalContent');
 
-            if (!user) { alert("Escribe un usuario"); btn.disabled=false; btn.textContent=originalText; return; }
-            
-            const isAvailable = await checkUsernameAvailability(user);
-            if (!isAvailable) {
-                alert(`⚠️ El usuario "${user}" ya está en uso.\n\nPor favor, elige otro nombre.`);
-                btn.disabled = false;
-                btn.textContent = originalText;
-                return;
-            }
-
-            if(!localStorage.getItem('savedRobloxUser')) {
-                localStorage.setItem('savedRobloxUser', user);
-                const rInput = document.getElementById('robloxUser');
-                if(rInput) {
-                    rInput.disabled = true;
-                    rInput.style.backgroundColor = '#252525';
+                if (!user) { throw new Error("Debes escribir un usuario"); }
+                
+                const isAvailable = await checkUsernameAvailability(user);
+                if (!isAvailable) {
+                    showError(`El usuario <strong>"${user}"</strong> ya está ocupado.<br><br>Por favor, elige otro nombre.`);
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    return;
                 }
-            }
 
-            btn.textContent = "Subiendo...";
+                if(!localStorage.getItem('savedRobloxUser')) {
+                    localStorage.setItem('savedRobloxUser', user);
+                    const rInput = document.getElementById('robloxUser');
+                    if(rInput) {
+                        rInput.disabled = true;
+                        rInput.style.backgroundColor = '#252525';
+                    }
+                }
 
-            let mediaUrl = '';
-            if(fileInput && fileInput.files[0]) {
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-                formData.append('upload_preset', 'comunidad_arc'); 
-                const cloudName = 'dmrlmfoip'; 
-                try {
-                    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
-                        method: 'POST', body: formData
+                btn.textContent = "Subiendo...";
+
+                // --- LÓGICA DE SUBIDA MÚLTIPLE (CARRUSEL) ---
+                let mediaUrls = [];
+                if(fileInput && fileInput.files && fileInput.files.length > 0) {
+                    const cloudName = 'dmrlmfoip';
+                    const uploadPreset = 'comunidad_arc';
+                    
+                    const uploadPromises = Array.from(fileInput.files).map(async (file) => {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('upload_preset', uploadPreset);
+                        
+                        try {
+                            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+                                method: 'POST', body: formData
+                            });
+                            const data = await res.json();
+                            return data.secure_url;
+                        } catch(err) {
+                            console.error("Error subiendo una imagen:", err);
+                            return null;
+                        }
                     });
-                    const data = await res.json();
-                    mediaUrl = data.secure_url || '';
-                } catch(err) { console.error(err); alert('Error subiendo archivo'); }
+
+                    const results = await Promise.all(uploadPromises);
+                    mediaUrls = results.filter(url => url !== null); 
+                }
+
+                const newPost = {
+                    title: title,      
+                    username: user,    
+                    rank: rank,        
+                    description: desc,
+                    section: section, 
+                    images: mediaUrls, // Guardamos ARRAY de URLs
+                    timestamp: Date.now(),
+                    displayDate: new Date().toLocaleDateString('es-ES'),
+                    views: 0 
+                };
+
+                await push(threadsRef, newPost);
+                
+                form.reset();
+                if(localStorage.getItem('savedRobloxUser')) {
+                    document.getElementById('robloxUser').value = localStorage.getItem('savedRobloxUser');
+                }
+                document.getElementById('fileName').textContent = '';
+                if(modal) modal.style.display = 'none';
+                btn.textContent = originalText;
+                btn.disabled = false;
+                document.getElementById('sectionInput').value = currentSection;
+
+            } catch (error) {
+                console.error(error);
+                showError("Error: " + error.message + "<br><br>Revisa tu conexión o las Reglas de Firebase.");
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
-
-            const newPost = {
-                title: title,      
-                username: user,    
-                rank: rank,        
-                description: desc,
-                section: section, 
-                image: mediaUrl,
-                timestamp: Date.now(),
-                displayDate: new Date().toLocaleDateString('es-ES'),
-                views: 0 
-            };
-
-            push(threadsRef, newPost);
-            form.reset();
-            
-            if(localStorage.getItem('savedRobloxUser')) {
-                document.getElementById('robloxUser').value = localStorage.getItem('savedRobloxUser');
-            }
-
-            document.getElementById('fileName').textContent = '';
-            if(modal) modal.style.display = 'none';
-            btn.textContent = originalText;
-            btn.disabled = false;
-            document.getElementById('sectionInput').value = currentSection;
         };
     }
     initBouncingRobux();
@@ -395,12 +508,25 @@ window.openComments = function(key) {
     onValue(commentsRef, (snapshot) => {
         list.innerHTML = '';
         const data = snapshot.val();
+        
         if(data) {
             Object.values(data).forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
+                
+                // 1. Links clicables
                 const commentWithLinks = makeLinksClickable(c.text);
-                item.innerHTML = `<span style="color:#00a2ff;font-weight:bold;">${c.username || 'Anon'}:</span> <span style="color:#ddd;">${commentWithLinks}</span>`;
+                
+                // 2. Verificar insignia azul en comentarios
+                const authorName = c.username || 'Anónimo';
+                // Comparamos con la lista global de verificados
+                const isVerified = verifiedUsersList.includes(authorName.toLowerCase());
+                
+                const badge = isVerified 
+                    ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' 
+                    : '';
+
+                item.innerHTML = `<span style="color:#00a2ff;font-weight:bold;">${authorName}</span>${badge}: <span style="color:#ddd;">${commentWithLinks}</span>`;
                 list.appendChild(item);
             });
         } else {
@@ -408,33 +534,47 @@ window.openComments = function(key) {
         }
     });
 
+    // LÓGICA DE PUBLICAR COMENTARIO
     const cForm = document.getElementById('commentForm');
     if(cForm) {
         cForm.onsubmit = async (e) => {
             e.preventDefault();
-            const txt = document.getElementById('commentInput').value;
-            const usr = document.getElementById('usernameInput').value || 'Anónimo';
             
-            if (usr !== 'Anónimo') {
-                const isAvailable = await checkUsernameAvailability(usr);
-                if (!isAvailable) {
-                    alert(`⚠️ El usuario "${usr}" ya está ocupado.\nSi eres nuevo, elige otro nombre.`);
-                    return;
+            try {
+                const txt = document.getElementById('commentInput').value;
+                const usr = document.getElementById('usernameInput').value || 'Anónimo';
+                
+                // Si no es anónimo, verificamos si el nombre está ocupado
+                if (usr !== 'Anónimo') {
+                    const isAvailable = await checkUsernameAvailability(usr);
+                    if (!isAvailable) {
+                        showError(`El usuario <strong>"${usr}"</strong> ya está ocupado.<br><br>Si eres nuevo, elige otro nombre.`);
+                        return;
+                    }
                 }
-            }
-            
-            if(!localStorage.getItem('savedRobloxUser') && usr !== 'Anónimo') {
-                localStorage.setItem('savedRobloxUser', usr);
-                const uInput = document.getElementById('usernameInput');
-                if(uInput) { uInput.disabled=true; uInput.style.backgroundColor='#252525'; }
-            }
+                
+                // Si es la primera vez que comenta con este nombre, lo guardamos y bloqueamos
+                if(!localStorage.getItem('savedRobloxUser') && usr !== 'Anónimo') {
+                    localStorage.setItem('savedRobloxUser', usr);
+                    const uInput = document.getElementById('usernameInput');
+                    if(uInput) { 
+                        uInput.disabled = true; 
+                        uInput.style.backgroundColor = '#252525'; 
+                    }
+                }
 
-            push(commentsRef, { text: txt, username: usr, timestamp: Date.now() });
-            document.getElementById('commentInput').value = '';
+                await push(commentsRef, { text: txt, username: usr, timestamp: Date.now() });
+                document.getElementById('commentInput').value = '';
+            
+            } catch (error) {
+                console.error(error);
+                showError("Error al comentar: " + error.message);
+            }
         }
     }
 };
 
+// --- ANIMACIÓN DE FONDO ---
 function initBouncingRobux() {
     const container = document.getElementById('floating-robux-container');
     if(!container) return;
