@@ -224,4 +224,21 @@ footer p { margin: 5px 0; }
     padding: 10px 25px; font-weight: bold; font-size: 1em; border-radius: 6px;
     cursor: pointer; margin-top: 10px; transition: all 0.2s ease;
 }
-#customAlertModal button:hover { background-color: #ff0000; color: #fff; transform: scale(1.05); box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); } 
+#customAlertModal button:hover { background-color: #ff0000; color: #fff; transform: scale(1.05); box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
+/* FOTO DE PERFIL PEQUEÑA (En Posts y Comentarios) */
+.user-avatar-small {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #333;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+/* Ajuste para el encabezado del post */
+.post-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
