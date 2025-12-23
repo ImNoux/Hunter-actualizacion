@@ -7,6 +7,7 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,8 +19,8 @@
                 <div id="menuDropdown" class="menu-dropdown">
                     <a href="#" onclick="openFullProfile()">👤 Mi Perfil</a>
                     
-                    <a id="menuLogin" href="#" onclick="openModal('loginModal')">Iniciar Sesión</a>
-                    <a id="menuLogout" href="#" onclick="logoutSystem()" style="display: none; color: #ff4d4d;">Cerrar Sesión</a>
+                    <a id="menuLogin" href="#" onclick="openModal('loginModal')">🔑 Iniciar Sesión</a>
+                    <a id="menuLogout" href="#" onclick="logoutSystem()" style="display: none; color: #ff4d4d;">🚪 Cerrar Sesión</a>
                     
                     <a href="#" onclick="openModal('updatesModal')">Actualizaciones</a>
                     <a href="#" onclick="openModal('contactModal')">Contactos</a>
@@ -35,15 +36,15 @@
 
         <nav class="nav-tabs">
             <button class="tab-btn active" onclick="changeSection('Publicaciones')">Publicaciones</button>
-            <button class="tab-btn" onclick="changeSection('Foros')">Foros</button>
+            <button class="tab-btn" onclick="changeSection('Busqueda')">Usuarios</button>
         </nav>
     </header>
 
-    <input type="text" id="searchInput" placeholder="Buscar usuarios...">
+    <input type="text" id="searchInput" placeholder="Buscar post, nombre o @usuario...">
 
     <main>
         <div class="thread-container">
-            <p id="noThreadsMessage">No hay contenido aquí.</p>
+            <p id="noThreadsMessage">Cargando contenido...</p>
         </div>
         <div id="pagination-container"></div>
     </main>
@@ -57,6 +58,7 @@
         <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">Crear Publicación</h2>
         <form id="newThreadForm">
             <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
+            
             <div class="form-group">
                 <label for="categorySelect">Rango:</label>
                 <select id="categorySelect" required>
@@ -71,21 +73,28 @@
                     <option value="Moon & Sun">Moon & Sun</option>
                 </select>
             </div>
+
             <div class="form-group">
                 <label for="robloxUser">Usuario Roblox:</label>
-                <input type="text" id="robloxUser" name="robloxUser" placeholder="Debes iniciar sesión primero" required autocomplete="off" disabled style="background-color: #252525; cursor: not-allowed;">
+                <input type="text" id="robloxUser" name="robloxUser" placeholder="Inicia sesión primero" required autocomplete="off" disabled style="background-color: #252525; cursor: not-allowed;">
             </div>
+
             <div class="form-group">
                 <label for="title">Título del Post:</label>
                 <input type="text" id="title" name="title" placeholder="Ej: Busco equipo..." required autocomplete="off">
             </div>
+
             <div class="form-group">
                 <label for="description">Descripción:</label>
                 <textarea id="description" name="description" placeholder="Escribe los detalles..." required rows="4"></textarea>
             </div>
-            <label for="imageFile" class="upload-btn-gray"><i class="fas fa-images"></i> Multimedia (Varios)</label>
+
+            <label for="imageFile" class="upload-btn-gray">
+                <i class="fas fa-images"></i> Multimedia (Varios)
+            </label>
             <input type="file" id="imageFile" accept="image/*, video/*" multiple style="display:none;">
             <p id="fileName" class="file-name-display"></p>
+
             <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
         </form>
     </div>
@@ -180,11 +189,11 @@
     <div id="updatesModal" class="modal-overlay">
         <div class="info-content">
             <span class="close-button" onclick="closeModal('updatesModal')">&times;</span>
-            <h2>Actualizaciones v7.0</h2>
+            <h2>Actualizaciones</h2>
             <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #ccc; line-height: 1.6;">
-                <li>Nueva interfaz de Edición</li>
-                <li>Restricción de cambio de nombre (7 días)</li>
-                <li>Restricción de usuario (15 días)</li>
+                <li>Nuevo Perfil</li>
+                <li>Buscador Mejorado</li>
+                <li>Sistema de Alertas</li>
             </ul>
         </div>
     </div>
@@ -201,16 +210,23 @@
         </div>
     </div>
 
-    <div id="customAlertModal" class="modal-overlay" style="z-index: 4000;">
-        <div class="info-content">
-            <h2 style="color: #ff4d4d; border-bottom: 1px solid #ff4d4d;">⚠️ ATENCIÓN</h2>
-            <p id="customAlertText" style="font-size: 1.1em; color: #fff; margin: 20px 0;"></p>
-            <button onclick="document.getElementById('customAlertModal').style.display='none'" style="background: #fff; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer;">ENTENDIDO</button>
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div id="confirmModal" class="modal-overlay" style="z-index: 5000;">
+        <div class="info-content" style="max-width: 300px; padding: 20px;">
+            <h3 style="border:none; margin-bottom: 10px;">¿Estás seguro?</h3>
+            <p id="confirmText" style="margin-bottom: 20px;">¿Confirmas esta acción?</p>
+            <div style="display:flex; justify-content:center; gap:10px;">
+                <button onclick="closeModal('confirmModal')" style="background:#333; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">Cancelar</button>
+                <button id="confirmActionBtn" style="background:#ff4d4d; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">Sí, seguro</button>
+            </div>
         </div>
     </div>
 
     <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+    
     <script type="module" src="script.js"></script>
+    
     <script>
         function toggleMenu() { document.getElementById("menuDropdown").classList.toggle("show"); }
         window.closeModal = (id) => document.getElementById(id).style.display = 'none';
