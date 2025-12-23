@@ -8,9 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
 
-    <script src="https://www.gstatic.com/firebasejs/9.2.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.2.0/firebase-database.js"></script>
-
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -31,56 +28,6 @@
 
             <div id="newThreadButtonContainer">
                 <button id="newThreadButton">+ Nuevo</button>
-
-                <div class="modal-content" id="newThreadModalContent">
-                    <span class="close-button" onclick="closeModal('newThreadModalContent')">&times;</span>
-
-                    <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">
-                        Crear Publicación
-                    </h2>
-
-                    <form id="newThreadForm">
-                        <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
-
-                        <div class="form-group">
-                            <label for="categorySelect">Rango:</label>
-                            <select id="categorySelect" required>
-                                <option value="" disabled selected>-- Selecciona --</option>
-                                <option value="Hunter">Hunter</option>
-                                <option value="Creator">Creator</option>
-                                <option value="Elite">Elite</option>
-                                <option value="Designer">Designer</option>
-                                <option value="Top Model">Top Model</option>
-                                <option value="Mentor">Mentor</option>
-                                <option value="Cheerleader">Cheerleader</option>
-                                <option value="Moon & Sun">Moon & Sun</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="robloxUser">Usuario Roblox:</label>
-                            <input type="text" id="robloxUser" name="robloxUser" placeholder="Ej: ARC_KIUXT" required autocomplete="off">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="title">Título del Post:</label>
-                            <input type="text" id="title" name="title" placeholder="Ej: Busco equipo..." required autocomplete="off">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="description">Descripción:</label>
-                            <textarea id="description" name="description" placeholder="Escribe los detalles..." required rows="4"></textarea>
-                        </div>
-
-                        <label for="imageFile" class="upload-btn-gray">
-                            <i class="fas fa-images"></i> Multimedia (Varios)
-                        </label>
-                        <input type="file" id="imageFile" accept="image/*, video/*" multiple style="display:none;">
-                        <p id="fileName" class="file-name-display"></p>
-
-                        <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
-                    </form>
-                </div>
             </div>
         </div>
 
@@ -89,6 +36,67 @@
             <button class="tab-btn" onclick="changeSection('Foros')">Foros</button>
         </nav>
     </header>
+
+    <input type="text" id="searchInput" placeholder="Buscar...">
+
+    <main>
+        <div class="thread-container">
+            <p id="noThreadsMessage">No hay contenido aquí.</p>
+        </div>
+        <div id="pagination-container"></div>
+    </main>
+
+    <footer>
+        <p>ARC_CLXN &copy; 2025. Todos los derechos reservados.</p>
+    </footer>
+
+    <div class="modal-content" id="newThreadModalContent">
+        <span class="close-button" onclick="closeModal('newThreadModalContent')">&times;</span>
+        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">
+            Crear Publicación
+        </h2>
+        <form id="newThreadForm">
+            <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
+
+            <div class="form-group">
+                <label for="categorySelect">Rango:</label>
+                <select id="categorySelect" required>
+                    <option value="" disabled selected>-- Selecciona --</option>
+                    <option value="Hunter">Hunter</option>
+                    <option value="Creator">Creator</option>
+                    <option value="Elite">Elite</option>
+                    <option value="Designer">Designer</option>
+                    <option value="Top Model">Top Model</option>
+                    <option value="Mentor">Mentor</option>
+                    <option value="Cheerleader">Cheerleader</option>
+                    <option value="Moon & Sun">Moon & Sun</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="robloxUser">Usuario Roblox:</label>
+                <input type="text" id="robloxUser" name="robloxUser" placeholder="Ej: ARC_KIUXT" required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label for="title">Título del Post:</label>
+                <input type="text" id="title" name="title" placeholder="Ej: Busco equipo..." required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Descripción:</label>
+                <textarea id="description" name="description" placeholder="Escribe los detalles..." required rows="4"></textarea>
+            </div>
+
+            <label for="imageFile" class="upload-btn-gray">
+                <i class="fas fa-images"></i> Multimedia (Varios)
+            </label>
+            <input type="file" id="imageFile" accept="image/*, video/*" multiple style="display:none;">
+            <p id="fileName" class="file-name-display"></p>
+
+            <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
+        </form>
+    </div>
 
     <div id="commentsModal" class="modal-overlay">
         <div class="comments-content">
@@ -151,56 +159,42 @@
 
     <div class="modal-content" id="userProfileModal" style="z-index: 3500;">
         <span class="close-button" onclick="closeModal('userProfileModal')">&times;</span>
-
         <div style="text-align: center; margin-top: 10px;">
-            <div style="background: #00a2ff; width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; border: 4px solid #1e1f22;">
-                <i class="fas fa-user" style="font-size: 45px; color: #fff;"></i>
+            <div style="position: relative; width: 100px; height: 100px; margin: 0 auto 15px;">
+                <img id="profileModalImage" src="https://i.ibb.co/5c389g3/default-avatar.png" 
+                     style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid #1e1f22; background: #000;">
+                
+                <label id="editPhotoBtn" for="avatarUpload" 
+                       style="display:none; position: absolute; bottom: 0; right: 0; background: #00a2ff; color: white; border-radius: 50%; width: 30px; height: 30px; line-height: 30px; cursor: pointer; border: 2px solid #2b2d31;">
+                    <i class="fas fa-camera" style="font-size: 14px;"></i>
+                </label>
+                <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
             </div>
 
-            <h2 id="profileModalName" style="margin: 0; color: #fff; font-size: 1.5em;">Usuario</h2>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <h2 id="profileModalName" style="margin: 0; color: #fff; font-size: 1.5em;">Usuario</h2>
+                <span id="profileVerifiedBadge"></span> 
+            </div>
+
             <p id="profileModalRank" style="color: #00a2ff; font-weight: bold; margin-top: 5px; font-size: 0.9em;">MEMBER</p>
             
-            <div id="profileFollowBtnContainer" style="margin: 15px 0;">
-                </div>
+            <div id="profileFollowBtnContainer" style="margin: 15px 0;"></div>
 
             <hr style="border-color: #333; margin: 20px 0;">
 
             <div class="profile-stats">
-                <div class="stat-box">
-                    <span id="profileFollowers">0</span>
-                    <label>Seguidores</label>
-                </div>
-                <div class="stat-box">
-                    <span id="profileFollowing">0</span>
-                    <label>Seguidos</label>
-                </div>
-                <div class="stat-box">
-                    <span id="profilePosts">0</span>
-                    <label>Posts</label>
-                </div>
-                <div class="stat-box">
-                    <span id="profileLikes">0</span>
-                    <label>Likes</label>
-                </div>
+                <div class="stat-box"><span id="profileFollowers">0</span><label>Seguidores</label></div>
+                <div class="stat-box"><span id="profileFollowing">0</span><label>Seguidos</label></div>
+                <div class="stat-box"><span id="profilePosts">0</span><label>Posts</label></div>
+                <div class="stat-box"><span id="profileLikes">0</span><label>Likes</label></div>
             </div>
         </div>
     </div>
 
-    <input type="text" id="searchInput" placeholder="Buscar...">
-
-    <main>
-        <div class="thread-container">
-            <p id="noThreadsMessage">No hay contenido aquí.</p>
-        </div>
-        <div id="pagination-container"></div>
-    </main>
-
-    <footer>
-        <p>ARC_CLXN &copy; 2025. Todos los derechos reservados.</p>
-    </footer>
-
     <div id="floating-robux-container"></div>
+    
     <script type="module" src="script.js"></script>
+    
     <script>
         function toggleMenu() { document.getElementById("menuDropdown").classList.toggle("show"); }
         window.closeModal = (id) => document.getElementById(id).style.display = 'none';
