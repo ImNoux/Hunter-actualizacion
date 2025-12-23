@@ -7,7 +7,6 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,11 +18,10 @@
                 <div id="menuDropdown" class="menu-dropdown">
                     <a href="#" onclick="openFullProfile()">👤 Mi Perfil</a>
                     
-                    <a id="menuLogin" href="#" onclick="openModal('loginModal')">Iniciar Sesión</a>
-                    <a id="menuLogout" href="#" onclick="logoutSystem()" style="display: none; color: #ff4d4d;">Cerrar Sesión</a>
+                    <a id="menuLogin" href="#" onclick="openModal('loginModal')">🔑 Iniciar Sesión</a>
+                    <a id="menuLogout" href="#" onclick="logoutSystem()" style="display: none; color: #ff4d4d;">🚪 Cerrar Sesión</a>
                     
                     <a href="#" onclick="openModal('updatesModal')">Actualizaciones</a>
-                    <a href="#" onclick="openModal('aboutModal')">Quiénes somos</a>
                     <a href="#" onclick="openModal('contactModal')">Contactos</a>
                 </div>
             </div>
@@ -56,12 +54,9 @@
 
     <div class="modal-content" id="newThreadModalContent">
         <span class="close-button" onclick="closeModal('newThreadModalContent')">&times;</span>
-        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">
-            Crear Publicación
-        </h2>
+        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">Crear Publicación</h2>
         <form id="newThreadForm">
             <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
-
             <div class="form-group">
                 <label for="categorySelect">Rango:</label>
                 <select id="categorySelect" required>
@@ -76,28 +71,21 @@
                     <option value="Moon & Sun">Moon & Sun</option>
                 </select>
             </div>
-
             <div class="form-group">
                 <label for="robloxUser">Usuario Roblox:</label>
                 <input type="text" id="robloxUser" name="robloxUser" placeholder="Debes iniciar sesión primero" required autocomplete="off" disabled style="background-color: #252525; cursor: not-allowed;">
             </div>
-
             <div class="form-group">
                 <label for="title">Título del Post:</label>
                 <input type="text" id="title" name="title" placeholder="Ej: Busco equipo..." required autocomplete="off">
             </div>
-
             <div class="form-group">
                 <label for="description">Descripción:</label>
                 <textarea id="description" name="description" placeholder="Escribe los detalles..." required rows="4"></textarea>
             </div>
-
-            <label for="imageFile" class="upload-btn-gray">
-                <i class="fas fa-images"></i> Multimedia (Varios)
-            </label>
+            <label for="imageFile" class="upload-btn-gray"><i class="fas fa-images"></i> Multimedia (Varios)</label>
             <input type="file" id="imageFile" accept="image/*, video/*" multiple style="display:none;">
             <p id="fileName" class="file-name-display"></p>
-
             <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
         </form>
     </div>
@@ -117,9 +105,7 @@
 
     <div class="modal-content" id="loginModal">
         <span class="close-button" onclick="closeModal('loginModal')">&times;</span>
-        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">
-            Iniciar Sesión
-        </h2>
+        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">Iniciar Sesión</h2>
         <div class="form-group">
             <label>Usuario:</label>
             <input type="text" id="loginUser" placeholder="Tu usuario exacto" required autocomplete="off">
@@ -128,9 +114,7 @@
             <label>PIN (Clave):</label>
             <input type="password" id="loginPin" placeholder="****" maxlength="4">
         </div>
-        <button onclick="loginSystem()" class="publish-btn" style="background-color: #00a2ff; margin-top:10px;">
-            ENTRAR
-        </button>
+        <button onclick="loginSystem()" class="publish-btn" style="background-color: #00a2ff; margin-top:10px;">ENTRAR</button>
         <p style="text-align:center; margin-top:20px; font-size:0.9em; color:#aaa;">
             ¿No tienes cuenta? <a href="#" onclick="closeModal('loginModal'); openModal('registerModal')" style="color:#00a2ff; font-weight:bold;">Regístrate aquí</a>
         </p>
@@ -138,9 +122,7 @@
 
     <div class="modal-content" id="registerModal">
         <span class="close-button" onclick="closeModal('registerModal')">&times;</span>
-        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">
-            Crear Cuenta Nueva
-        </h2>
+        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">Crear Cuenta Nueva</h2>
         <div class="form-group">
             <label>Crear Usuario:</label>
             <input type="text" id="regUser" placeholder="Elige un usuario único" required autocomplete="off">
@@ -149,31 +131,61 @@
             <label>Crear PIN (4 dígitos):</label>
             <input type="text" id="regPin" placeholder="Ej: 1234" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </div>
-        <button onclick="registerSystem()" class="publish-btn" style="background-color: #2b2d31; border: 1px solid #00a2ff; color: #00a2ff; margin-top:10px;">
-            CREAR CUENTA
-        </button>
+        <button onclick="registerSystem()" class="publish-btn" style="background-color: #2b2d31; border: 1px solid #00a2ff; color: #00a2ff; margin-top:10px;">CREAR CUENTA</button>
         <p style="text-align:center; margin-top:20px; font-size:0.9em; color:#aaa;">
             ¿Ya tienes cuenta? <a href="#" onclick="closeModal('registerModal'); openModal('loginModal')" style="color:#00a2ff;">Inicia sesión</a>
         </p>
     </div>
 
-    <div id="updatesModal" class="modal-overlay">
-        <div class="info-content">
-            <span class="close-button" onclick="closeModal('updatesModal')">&times;</span>
-            <h2>Actualizaciones v6.5</h2>
-            <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #ccc; line-height: 1.6;">
-                <li>Cerrar Sesión añadido</li>
-                <li>Menú dinámico</li>
-                <li>Mayor seguridad</li>
-            </ul>
+    <div class="modal-content" id="editProfileModal" style="max-width: 350px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <span onclick="closeModal('editProfileModal')" style="cursor:pointer; font-size:1.2em;">✕</span>
+            <h3 style="margin:0; font-size:1.1em;">Editar perfil</h3>
+            <span onclick="saveProfileChanges()" id="saveProfileBtn" style="cursor:pointer; color:#00a2ff; font-weight:bold;">Listo</span>
+        </div>
+
+        <div style="text-align:center; margin-bottom:20px;">
+            <div style="position:relative; display:inline-block;">
+                <img id="editAvatarPreview" src="" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #333;">
+                <div onclick="document.getElementById('avatarUpload').click()" style="position:absolute; bottom:0; right:0; background:#00a2ff; color:white; border-radius:50%; width:25px; height:25px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.8em;">
+                    <i class="fas fa-camera"></i>
+                </div>
+            </div>
+            <p style="color:#00a2ff; font-size:0.9em; margin-top:10px; cursor:pointer;" onclick="document.getElementById('avatarUpload').click()">Editar foto o avatar</p>
+        </div>
+
+        <div class="edit-group">
+            <label>Nombre</label>
+            <input type="text" id="editNameInput" placeholder="Tu nombre visible">
+            <p class="limit-info">Se puede cambiar cada 7 días.</p>
+        </div>
+
+        <div class="edit-group">
+            <label>Nombre de usuario</label>
+            <input type="text" id="editHandleInput" placeholder="Ej: kiuxt">
+            <p class="limit-info">Se puede cambiar cada 15 días.</p>
+        </div>
+
+        <div class="edit-group">
+            <label>Presentación</label>
+            <textarea id="editBioInput" rows="2" placeholder="Cuéntanos algo..."></textarea>
+        </div>
+
+        <div class="edit-group">
+            <label>Nota de Estado</label>
+            <input type="text" id="editStatusInput" placeholder="¿Qué piensas hoy?" maxlength="30">
         </div>
     </div>
 
-    <div id="aboutModal" class="modal-overlay">
+    <div id="updatesModal" class="modal-overlay">
         <div class="info-content">
-            <span class="close-button" onclick="closeModal('aboutModal')">&times;</span>
-            <h2>Quiénes Somos</h2>
-            <p>Somos una comunidad activa en busca de nuevos talentos.</p>
+            <span class="close-button" onclick="closeModal('updatesModal')">&times;</span>
+            <h2>Actualizaciones v7.0</h2>
+            <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #ccc; line-height: 1.6;">
+                <li>Nueva interfaz de Edición</li>
+                <li>Restricción de cambio de nombre (7 días)</li>
+                <li>Restricción de usuario (15 días)</li>
+            </ul>
         </div>
     </div>
 
@@ -184,9 +196,7 @@
             <p>Síguenos en Instagram:</p>
             <div style="margin-top: 20px; font-size: 1.2em;">
                 <i class="fab fa-instagram" style="color: #E1306C;"></i>
-                <a href="https://instagram.com/arc_clxn" target="_blank" style="color: #00a2ff; text-decoration: none; font-weight: bold; margin-left: 5px;">
-                    arc_clxn
-                </a>
+                <a href="https://instagram.com/arc_clxn" target="_blank" style="color: #00a2ff; text-decoration: none; font-weight: bold; margin-left: 5px;">arc_clxn</a>
             </div>
         </div>
     </div>
@@ -195,17 +205,12 @@
         <div class="info-content">
             <h2 style="color: #ff4d4d; border-bottom: 1px solid #ff4d4d;">⚠️ ATENCIÓN</h2>
             <p id="customAlertText" style="font-size: 1.1em; color: #fff; margin: 20px 0;"></p>
-            <button onclick="document.getElementById('customAlertModal').style.display='none'" 
-                    style="background: #fff; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer;">
-                ENTENDIDO
-            </button>
+            <button onclick="document.getElementById('customAlertModal').style.display='none'" style="background: #fff; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer;">ENTENDIDO</button>
         </div>
     </div>
 
     <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
-    
     <script type="module" src="script.js"></script>
-    
     <script>
         function toggleMenu() { document.getElementById("menuDropdown").classList.toggle("show"); }
         window.closeModal = (id) => document.getElementById(id).style.display = 'none';
@@ -213,19 +218,10 @@
             document.getElementById("menuDropdown").classList.remove('show');
             document.getElementById(id).style.display = 'block'; 
         }
-        
         document.getElementById('imageFile').onchange = function() {
             if(this.files && this.files.length > 0) {
-                if(this.files.length === 1) {
-                    let name = this.files[0].name;
-                    if(name.length > 25) name = name.substring(0, 25) + '...';
-                    document.getElementById('fileName').textContent = name;
-                } else {
-                    document.getElementById('fileName').textContent = `${this.files.length} archivos seleccionados`;
-                }
-            } else {
-                document.getElementById('fileName').textContent = "";
-            }
+                document.getElementById('fileName').textContent = this.files.length === 1 ? (this.files[0].name.substring(0,25) + "...") : `${this.files.length} archivos`;
+            } else { document.getElementById('fileName').textContent = ""; }
         };
         window.toggleMenu = toggleMenu;
     </script>
