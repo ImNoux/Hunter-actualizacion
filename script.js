@@ -23,24 +23,22 @@ const verifiedRef = ref(db, 'verified');
 
 const threadsPerPage = 10;
 let currentPage = 1;
-let searchTerm = '';
+let searchTerm = ''; 
 let currentSection = 'Publicaciones'; 
+let viewingUserProfile = ''; 
 let allThreadsData = []; 
 let verifiedUsersList = []; 
 let myFollowingList = []; 
 let myAvatarUrl = ""; 
 let allUsersMap = {}; 
 
-// --- FUNCIONES DE AYUDA ---
 function showError(msg) {
     const alertModal = document.getElementById('customAlertModal');
     const alertText = document.getElementById('customAlertText');
     if(alertModal && alertText) {
         alertText.innerHTML = msg; 
         alertModal.style.display = 'block';
-    } else {
-        alert(msg); 
-    }
+    } else { alert(msg); }
 }
 
 function makeLinksClickable(text) {
@@ -51,26 +49,16 @@ function makeLinksClickable(text) {
     });
 }
 
-// --- FUNCIÓN DE FORMATO CORREGIDA (SIN REDONDEO) ---
 function formatCount(num) {
     if (!num) return 0;
-    
-    // 1. MILLONES (Ej: 1.999.999 -> 1.9 Mill.)
     if (num >= 1000000) {
-        // Truco: Multiplicamos por 10, cortamos decimales (floor), dividimos por 10.
-        // Esto convierte 1.99 en 19.9 -> 19 -> 1.9
         let millions = Math.floor((num / 1000000) * 10) / 10;
         return millions + ' Mill.';
     }
-    
-    // 2. MILES (Ej: 999.999 -> 999 mil)
     if (num >= 1000) {
-        // Aquí usamos Math.floor directo para quedarnos solo con el entero
-        // Evita que 999.9 se convierta en 1000
         let thousands = Math.floor(num / 1000); 
         return thousands + ' mil';
     }
-    
     return num;
 }
 
@@ -81,11 +69,7 @@ window.changeSection = function(sectionName) {
         if(btn.textContent.trim() === sectionName) btn.classList.add('active');
         else btn.classList.remove('active');
     });
-    const modalTitle = document.getElementById('modalSectionTitle');
-    const sectionInput = document.getElementById('sectionInput');
-    if(modalTitle) modalTitle.textContent = sectionName;
-    if(sectionInput) sectionInput.value = sectionName;
-    renderCurrentView();
+    renderCurrentView(); 
 };
 
 function getUserId() {
@@ -98,43 +82,28 @@ function getUserId() {
 }
 
 function initFirebaseListener() {
-    // 1. CARGAR USUARIOS
     onValue(usersRef, (snapshot) => {
         const data = snapshot.val();
-        if (data) {
-            allUsersMap = data; 
-        } else {
-            allUsersMap = {};
-        }
-        if (allThreadsData.length > 0) {
-            renderCurrentView();
-        }
+        if (data) { allUsersMap = data; } else { allUsersMap = {}; }
+        if (allThreadsData.length > 0) renderCurrentView();
     });
 
-    // 2. Posts
     const getThreads = query(threadsRef, orderByChild('timestamp'));
     onValue(getThreads, (snapshot) => {
         const data = snapshot.val();
         if (data) {
             allThreadsData = Object.entries(data).sort((a, b) => b[1].timestamp - a[1].timestamp);
-        } else {
-            allThreadsData = [];
-        }
+        } else { allThreadsData = []; }
         renderCurrentView();
     });
 
-    // 3. Verificados
     onValue(verifiedRef, (snapshot) => {
         const data = snapshot.val();
-        if (data) {
-            verifiedUsersList = Object.keys(data).map(name => name.toLowerCase());
-        } else {
-            verifiedUsersList = [];
-        }
+        if (data) { verifiedUsersList = Object.keys(data).map(name => name.toLowerCase()); } 
+        else { verifiedUsersList = []; }
         renderCurrentView(); 
     });
 
-    // 4. Mis Datos
     const myUser = localStorage.getItem('savedRobloxUser');
     if (myUser) {
         const myUserRef = ref(db, `users/${myUser}`);
@@ -150,7 +119,7 @@ function initFirebaseListener() {
         });
     }
 }
-// --- PARTE 2: RENDERIZADO (El + desaparece si ya sigues) ---
+// --- PARTE 2: RENDERIZADO ---
 
 function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
@@ -160,23 +129,30 @@ function renderCurrentView() {
     if(!threadContainer) return;
     threadContainer.innerHTML = '';
     paginationContainer.innerHTML = '';
+    if(noThreadsMessage) noThreadsMessage.style.display = 'none';
+
+    if (currentSection === 'Perfil') {
+        renderFullProfile(threadContainer);
+        return;
+    }
+
+    if (currentSection === 'Busqueda') {
+        renderUserSearch(threadContainer);
+        return;
+    }
 
     let filtered = allThreadsData.filter(([key, thread]) => {
-        const matchesSearch = thread.title.toLowerCase().includes(searchTerm.toLowerCase());
         let postSection = thread.section; 
         let postCategory = thread.category;
         if (!postSection) {
             if (['Publicaciones', 'Foros', 'Sugerencias'].includes(postCategory)) {
                 postSection = postCategory;
-            } else {
-                postSection = 'Publicaciones';
-            }
+            } else { postSection = 'Publicaciones'; }
         }
-        return matchesSearch && (postSection === currentSection);
+        return (postSection === currentSection);
     });
 
     if (filtered.length > 0) {
-        if(noThreadsMessage) noThreadsMessage.style.display = 'none';
         const start = (currentPage - 1) * threadsPerPage;
         const end = start + threadsPerPage;
         const pageThreads = filtered.slice(start, end);
@@ -191,11 +167,141 @@ function renderCurrentView() {
     }
 }
 
+function renderUserSearch(container) {
+    if (!searchTerm) {
+        container.innerHTML = '<p style="text-align:center; color:#777;">Escribe el nombre de un usuario...</p>';
+        return;
+    }
+    const term = searchTerm.toLowerCase();
+    const foundUsers = Object.keys(allUsersMap).filter(u => u.toLowerCase().includes(term));
+
+    if (foundUsers.length === 0) {
+        container.innerHTML = `<p style="text-align:center;">No encontramos a "${searchTerm}"</p>`;
+        return;
+    }
+
+    foundUsers.forEach(username => {
+        const uData = allUsersMap[username];
+        const avatar = uData.avatar || DEFAULT_AVATAR;
+        const followers = formatCount(uData.followersCount || 0);
+
+        const div = document.createElement('div');
+        div.className = 'user-search-result';
+        div.onclick = () => openFullProfile(username);
+
+        div.innerHTML = `
+            <img src="${avatar}" class="user-search-avatar">
+            <div class="user-search-info">
+                <h4>${username}</h4>
+                <p>${followers} Seguidores</p>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// --- RENDERIZAR PERFIL COMPLETO (FINAL CON LÍNEAS DIVISORIAS) ---
+function renderFullProfile(container) {
+    const targetUser = viewingUserProfile;
+    const userData = allUsersMap[targetUser] || {};
+    
+    const avatar = userData.avatar || DEFAULT_AVATAR;
+    const displayName = userData.displayName || targetUser; 
+    const status = userData.status || ""; 
+    const bio = userData.bio || "";
+    
+    const followers = formatCount(userData.followersCount || 0);
+    const following = formatCount(userData.followingCount || 0);
+    
+    let totalLikes = 0;
+    let userPosts = [];
+    allThreadsData.forEach(([key, thread]) => {
+        if(thread.username === targetUser) {
+            userPosts.push([key, thread]);
+            totalLikes += (thread.likeCount || 0);
+        }
+    });
+
+    const isVerified = verifiedUsersList.includes(targetUser.toLowerCase());
+    const verifyBadge = isVerified ? '<i class="fas fa-check-circle" style="font-size: 0.9em;"></i>' : '';
+
+    const myUser = localStorage.getItem('savedRobloxUser');
+    let bubbleHTML = '';
+    let plusBtnAction = '';
+    let nameAction = ''; 
+
+    if (myUser === targetUser) {
+        if (status) {
+            bubbleHTML = `<div class="status-bubble" onclick="editMyStatus()">${status}</div>`;
+        } else {
+            bubbleHTML = `<div class="status-bubble" onclick="editMyStatus()" style="opacity:0.5;">+ Nota</div>`;
+        }
+        plusBtnAction = `onclick="document.getElementById('avatarUpload').click()"`;
+        nameAction = `onclick="editMyName()"`;
+    } else {
+        if (status) bubbleHTML = `<div class="status-bubble">${status}</div>`;
+        const isFollowing = myFollowingList.includes(targetUser);
+        if(isFollowing) {
+             plusBtnAction = `onclick="toggleFollow('${targetUser}')" style="background:#00a2ff; color:#fff; border:none;"`; 
+        } else {
+             plusBtnAction = `onclick="toggleFollow('${targetUser}')"`;
+        }
+        nameAction = `style="cursor:default;"`;
+    }
+
+    let plusIcon = (myUser === targetUser) ? '<i class="fas fa-camera" style="font-size:0.8em;"></i>' : '<i class="fas fa-plus"></i>';
+    if(myUser !== targetUser && myFollowingList.includes(targetUser)) {
+        plusIcon = '<i class="fas fa-check"></i>';
+    }
+
+    const header = document.createElement('div');
+    header.className = 'profile-header-container';
+    header.innerHTML = `
+        <div class="profile-top-section">
+            <div class="profile-avatar-wrapper">
+                ${bubbleHTML}
+                <img src="${avatar}" class="profile-avatar-big">
+                <div class="profile-plus-btn" ${plusBtnAction}>${plusIcon}</div>
+            </div>
+
+            <div class="profile-info-column">
+                <h2 class="display-name" ${nameAction}>${displayName}</h2>
+                <div class="username-handle">
+                    <span>@${targetUser}</span>
+                    ${verifyBadge}
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-stats-bar">
+            <div class="p-stat"><span>${following}</span><label>Siguiendo</label></div>
+            <div class="p-stat"><span>${followers}</span><label>Seguidores</label></div>
+            <div class="p-stat"><span>${formatCount(totalLikes)}</span><label>Me gusta</label></div>
+        </div>
+
+        <div class="profile-bio-section" onclick="${myUser===targetUser ? 'editMyBio()' : ''}">
+            ${bio ? makeLinksClickable(bio) : (myUser===targetUser ? '<span style="color:#777; font-style:italic;">Toca para añadir biografía...</span>' : '')}
+        </div>
+        
+        ${myUser !== targetUser ? `
+            <button onclick="toggleFollow('${targetUser}')" style="width:100%; margin-top:15px; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; font-weight:bold; cursor:pointer;">
+                ${myFollowingList.includes(targetUser) ? 'Siguiendo' : 'Seguir'}
+            </button>
+        ` : ''}
+    `;
+    container.appendChild(header);
+
+    if (userPosts.length > 0) {
+        userPosts.forEach(([key, thread]) => renderThread(key, thread, container));
+    } else {
+        container.innerHTML += `<div style="text-align:center; padding:40px; color:#555;"><i class="fas fa-camera" style="font-size:2em; margin-bottom:10px;"></i><br>Sin publicaciones</div>`;
+    }
+}
+
 function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.classList.add('thread');
 
-    // Carrusel Multimedia
     let mediaHTML = '';
     if (thread.images && Array.isArray(thread.images) && thread.images.length > 0) {
         const totalImages = thread.images.length;
@@ -251,7 +357,6 @@ function renderThread(key, thread, container) {
     const rawLikeCount = thread.likeCount || 0;
     const rawCommentCount = thread.comments ? Object.keys(thread.comments).length : 0;
     const rawViewCount = thread.views || 0;
-
     const likeCountDisplay = formatCount(rawLikeCount);
     const commentCountDisplay = formatCount(rawCommentCount);
     const viewCountDisplay = formatCount(rawViewCount);
@@ -259,44 +364,27 @@ function renderThread(key, thread, container) {
     const userId = getUserId();
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
     const authorName = thread.username || 'Usuario';
-
     const isVerifiedAuto = verifiedUsersList.includes(authorName.toLowerCase());
     const verifyBadge = (isVerifiedAuto || thread.verificado) 
         ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' 
         : '';
-
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
-    // --- LÓGICA DEL BOTÓN + (MODIFICADA) ---
     const myUser = localStorage.getItem('savedRobloxUser');
     let avatarMenuHTML = '';
     
-    // Solo mostramos el "+" si NO soy yo Y si NO lo estoy siguiendo
     if (myUser && myUser !== authorName) {
         const isFollowing = myFollowingList.includes(authorName);
-        
-        // ¡AQUÍ ESTÁ EL CAMBIO!
-        // Si NO lo sigues (!isFollowing), mostramos el badge.
-        // Si YA lo sigues, avatarMenuHTML se queda vacío (el badge desaparece).
         if (!isFollowing) {
             avatarMenuHTML = `
-                <div class="plus-badge" onclick="toggleMiniMenu(event, 'menu-${key}')">
-                    <i class="fas fa-plus"></i>
-                </div>
-                
+                <div class="plus-badge" onclick="toggleMiniMenu(event, 'menu-${key}')"><i class="fas fa-plus"></i></div>
                 <div id="menu-${key}" class="mini-menu-dropdown">
-                    <div class="mini-menu-item" onclick="openUserProfile('${authorName}')">
-                        Ir al perfil <i class="far fa-user"></i>
-                    </div>
-                    <div class="mini-menu-item" onclick="toggleFollow('${authorName}')">
-                        Seguir <i class="fas fa-plus-circle"></i>
-                    </div>
-                </div>
-            `;
+                    <div class="mini-menu-item" onclick="openFullProfile('${authorName}')">Ir al perfil <i class="far fa-user"></i></div>
+                    <div class="mini-menu-item" onclick="toggleFollow('${authorName}')">Seguir <i class="fas fa-plus-circle"></i></div>
+                </div>`;
         }
     }
 
-    // Avatar Actualizado
     let currentAvatar = DEFAULT_AVATAR;
     if (allUsersMap[authorName] && allUsersMap[authorName].avatar) {
         currentAvatar = allUsersMap[authorName].avatar;
@@ -306,40 +394,25 @@ function renderThread(key, thread, container) {
 
     div.innerHTML = `
         <div class="thread-date">${thread.displayDate}</div>
-        
         <div class="post-header">
             <div class="avatar-wrapper">
-                <img src="${currentAvatar}" class="user-avatar-small" alt="Avatar" onclick="openUserProfile('${authorName}')">
-                ${avatarMenuHTML} </div>
-            
+                <img src="${currentAvatar}" class="user-avatar-small" alt="Avatar" onclick="openFullProfile('${authorName}')">
+                ${avatarMenuHTML}
+            </div>
             <div class="post-header-info">
                 <div style="font-size: 0.9em; color: #aaa;">
-                    ${rankBadge} 
-                    <strong class="clickable-name" style="color: #fff;" onclick="openUserProfile('${authorName}')">${authorName}</strong> 
-                    ${verifyBadge}
+                    ${rankBadge} <strong class="clickable-name" style="color: #fff;" onclick="openFullProfile('${authorName}')">${authorName}</strong> ${verifyBadge}
                 </div>
             </div>
         </div>
-
         <h2>${thread.title}</h2>
         <p>${descriptionWithLinks}</p>
-        
-        <div class="media-container-hook-${key}">
-            ${mediaHTML}
-        </div>
-        
+        <div class="media-container-hook-${key}">${mediaHTML}</div>
         <div class="thread-actions">
-            <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${rawLikeCount}, this)">
-                <i class="fas fa-heart"></i> ${likeCountDisplay}
-            </button>
-            <button class="comment-button" onclick="openComments('${key}')">
-                <i class="far fa-comment"></i> ${commentCountDisplay}
-            </button>
-            <span class="view-button" style="color: #aaa; font-weight: bold; font-size: 1em; cursor: default; display: inline-flex; align-items: center; gap: 5px;">
-                <i class="far fa-eye"></i> ${viewCountDisplay}
-            </span>
-        </div>
-    `;
+            <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${rawLikeCount}, this)"><i class="fas fa-heart"></i> ${likeCountDisplay}</button>
+            <button class="comment-button" onclick="openComments('${key}')"><i class="far fa-comment"></i> ${commentCountDisplay}</button>
+            <span class="view-button" style="color: #aaa; font-weight: bold; font-size: 1em; cursor: default; display: inline-flex; align-items: center; gap: 5px;"><i class="far fa-eye"></i> ${viewCountDisplay}</span>
+        </div>`;
     container.appendChild(div);
 
     if (thread.images && thread.images.length > 0) {
@@ -354,205 +427,120 @@ function renderThread(key, thread, container) {
                     const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
                     counter.innerText = `${index + 1}/${total}`;
                     dots.forEach((d, i) => {
-                        if(i === index) d.classList.add('active');
-                        else d.classList.remove('active');
+                        if(i === index) d.classList.add('active'); else d.classList.remove('active');
                     });
                 });
             }
         }
     }
 }
-// --- PARTE 3: ACCIONES Y LÓGICA ---
+// --- PARTE 3: LÓGICA Y EVENTOS ---
 
-// --- NUEVO: FUNCIÓN PARA EL MENÚ FLOTANTE (+) ---
-window.toggleMiniMenu = function(event, menuId) {
-    event.stopPropagation(); // Evita que el click se propague y cierre el menú inmediatamente
-    
-    // 1. Cerrar todos los otros menús abiertos primero
-    document.querySelectorAll('.mini-menu-dropdown').forEach(m => {
-        if(m.id !== menuId) m.classList.remove('show');
+window.goToHome = function() {
+    searchTerm = ''; 
+    const searchInput = document.getElementById('searchInput');
+    if(searchInput) searchInput.value = '';
+
+    currentSection = 'Publicaciones';
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        if(btn.textContent.trim() === 'Publicaciones') btn.classList.add('active');
+        else btn.classList.remove('active');
     });
 
-    // 2. Abrir/Cerrar el seleccionado
-    const menu = document.getElementById(menuId);
-    if(menu) {
-        menu.classList.toggle('show');
-    }
+    renderCurrentView();
+    window.scrollTo(0, 0);
 };
 
-// CERRAR MENÚS AL TOCAR EN CUALQUIER OTRO LADO
-document.addEventListener('click', function() {
-    document.querySelectorAll('.mini-menu-dropdown').forEach(m => {
-        m.classList.remove('show');
-    });
-});
+window.openFullProfile = function(username) {
+    if(!username || username === 'null') {
+        username = localStorage.getItem('savedRobloxUser');
+    }
 
-// 1. ABRIR PERFIL GRANDE
-window.openUserProfile = function(targetUser) {
-    if(!targetUser) return;
-
-    // Cerrar cualquier mini-menú que haya quedado abierto
-    document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
-
-    const elements = {
-        name: document.getElementById('profileModalName'),
-        rank: document.getElementById('profileModalRank'),
-        followers: document.getElementById('profileFollowers'),
-        following: document.getElementById('profileFollowing'),
-        posts: document.getElementById('profilePosts'),
-        likes: document.getElementById('profileLikes'),
-        btnContainer: document.getElementById('profileFollowBtnContainer'),
-        img: document.getElementById('profileModalImage'),
-        editBtn: document.getElementById('editPhotoBtn'),
-        verifiedBadge: document.getElementById('profileVerifiedBadge')
-    };
-
-    if(elements.name) elements.name.textContent = targetUser;
-    if(elements.rank) elements.rank.textContent = "Cargando...";
-    if(elements.followers) elements.followers.textContent = "-";
+    if(!username) {
+        showError("⚠️ <strong>No estás identificado.</strong><br><br>En este navegador no tienes un perfil guardado.<br>Por favor, <strong>crea una publicación o comenta</strong> para registrarte aquí.");
+        const menu = document.getElementById("menuDropdown");
+        if(menu) menu.classList.remove('show');
+        return;
+    }
     
-    // Cargar foto actual
-    if(elements.img) {
-        if(allUsersMap[targetUser] && allUsersMap[targetUser].avatar) {
-            elements.img.src = allUsersMap[targetUser].avatar;
-        } else {
-            elements.img.src = DEFAULT_AVATAR;
-        }
-    }
-    if(elements.verifiedBadge) elements.verifiedBadge.innerHTML = ""; 
+    viewingUserProfile = username; 
+    currentSection = 'Perfil';     
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    
+    renderCurrentView();
+    window.scrollTo(0, 0);
+    
+    const menu = document.getElementById("menuDropdown");
+    if(menu) menu.classList.remove('show');
+};
 
-    const modal = document.getElementById('userProfileModal');
-    if(modal) {
-        document.getElementById("menuDropdown").classList.remove('show');
-        modal.style.display = 'block';
-    }
+window.openUserProfile = window.openFullProfile;
 
-    const userRef = ref(db, `users/${targetUser}`);
-    onValue(userRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        if(elements.followers) elements.followers.textContent = formatCount(data.followersCount || 0);
-        if(elements.following) elements.following.textContent = formatCount(data.followingCount || 0);
-        
-        if(elements.img) elements.img.src = data.avatar || DEFAULT_AVATAR;
-
-        let posts = 0;
-        let likes = 0;
-        let rank = "Miembro";
-
-        allThreadsData.forEach(([key, thread]) => {
-            if(thread.username === targetUser) {
-                posts++;
-                likes += (thread.likeCount || 0);
-                if(thread.rank) rank = thread.rank;
-            }
-        });
-
-        if(elements.posts) elements.posts.textContent = formatCount(posts);
-        if(elements.likes) elements.likes.textContent = formatCount(likes);
-        if(elements.rank) elements.rank.textContent = rank;
-
-    }, { onlyOnce: true });
-
+// --- EDICIÓN ---
+window.editMyName = function() {
     const myUser = localStorage.getItem('savedRobloxUser');
-    if(myUser === targetUser) {
-        if(elements.editBtn) elements.editBtn.style.display = 'block';
-        if(elements.btnContainer) elements.btnContainer.innerHTML = ""; 
-    } else {
-        if(elements.editBtn) elements.editBtn.style.display = 'none'; 
-        
-        if (myUser) {
-            const isFollowing = myFollowingList.includes(targetUser);
-            const btnText = isFollowing ? 'DEJAR DE SEGUIR' : 'SEGUIR';
-            const btnColor = isFollowing ? '#555' : '#00a2ff';
-            
-            const btnHTML = `
-                <button onclick="toggleFollowFromProfile('${targetUser}')" 
-                    style="background: ${btnColor}; color: white; border: none; padding: 10px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s;">
-                    ${btnText}
-                </button>
-            `;
-            if(elements.btnContainer) elements.btnContainer.innerHTML = btnHTML;
-        }
-    }
-
-    if(verifiedUsersList.includes(targetUser.toLowerCase())) {
-        if(elements.verifiedBadge) {
-            elements.verifiedBadge.innerHTML = '<i class="fas fa-check-circle" style="color:#00a2ff; font-size: 1.2em;"></i>';
-        }
+    if (!myUser) return;
+    let currentName = (allUsersMap[myUser] && allUsersMap[myUser].displayName) ? allUsersMap[myUser].displayName : myUser;
+    
+    const newName = prompt("Elige tu nombre para mostrar:", currentName);
+    if (newName !== null && newName.trim() !== "") {
+        update(ref(db, `users/${myUser}`), { displayName: newName.substring(0, 20) });
     }
 };
 
-// 2. SUBIR FOTO DE PERFIL
-const avatarInput = document.getElementById('avatarUpload');
-if(avatarInput) {
-    avatarInput.onchange = async function(e) {
-        if(this.files && this.files.length > 0) {
-            const file = this.files[0];
-            const myUser = localStorage.getItem('savedRobloxUser');
-            if(!myUser) return;
+window.editMyStatus = function() {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) return;
+    let currentStatus = (allUsersMap[myUser] && allUsersMap[myUser].status) ? allUsersMap[myUser].status : "";
 
-            const img = document.getElementById('profileModalImage');
-            img.style.opacity = "0.5";
+    const newStatus = prompt("Escribe una nota corta (Estado):", currentStatus);
+    if (newStatus !== null) {
+        update(ref(db, `users/${myUser}`), { status: newStatus.substring(0, 30) });
+    }
+};
 
-            const cloudName = 'dmrlmfoip';
-            const uploadPreset = 'comunidad_arc';
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', uploadPreset);
+window.editMyBio = function() {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) return;
+    let currentBio = allUsersMap[myUser]?.bio || "";
+    
+    const newBio = prompt("Escribe tu biografía:", currentBio);
+    if (newBio !== null) {
+        update(ref(db, `users/${myUser}`), { bio: newBio });
+    }
+};
 
-            try {
-                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
-                    method: 'POST', body: formData
-                });
-                const data = await res.json();
-                const newAvatarUrl = data.secure_url;
-
-                await update(ref(db, `users/${myUser}`), {
-                    avatar: newAvatarUrl
-                });
-
-                img.src = newAvatarUrl;
-                img.style.opacity = "1";
-                alert("✅ Foto de perfil actualizada.");
-                myAvatarUrl = newAvatarUrl;
-
-            } catch(err) {
-                console.error(err);
-                alert("Error al subir imagen.");
-                img.style.opacity = "1";
-            }
+const searchIn = document.getElementById('searchInput');
+if(searchIn) {
+    searchIn.oninput = (e) => {
+        searchTerm = e.target.value.trim();
+        if(searchTerm.length > 0) {
+            currentSection = 'Busqueda'; 
+        } else {
+            currentSection = 'Publicaciones'; 
         }
+        renderCurrentView();
     };
 }
 
-window.toggleFollowFromProfile = function(targetUser) {
-    window.toggleFollow(targetUser);
-    setTimeout(() => {
-        const modal = document.getElementById('userProfileModal');
-        if(modal && modal.style.display === 'block') {
-             window.openUserProfile(targetUser);
-        }
-    }, 300); 
+window.toggleMiniMenu = function(event, menuId) {
+    event.stopPropagation(); 
+    document.querySelectorAll('.mini-menu-dropdown').forEach(m => {
+        if(m.id !== menuId) m.classList.remove('show');
+    });
+    const menu = document.getElementById(menuId);
+    if(menu) menu.classList.toggle('show');
 };
+document.addEventListener('click', function() {
+    document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
+});
 
 window.toggleFollow = function(targetUser) {
     const myUser = localStorage.getItem('savedRobloxUser');
-    if(!myUser) {
-        showError("Debes publicar algo primero.");
-        return;
-    }
-    if(myUser === targetUser) {
-        showError("No puedes seguirte a ti mismo.");
-        return;
-    }
+    if(!myUser) { showError("Regístrate primero."); return; }
+    if(myUser === targetUser) { showError("No puedes seguirte a ti mismo."); return; }
     
-    // Cerrar cualquier mini-menú al seguir
     document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
-
-    if (typeof increment === 'undefined') {
-        alert("Error: Falta 'increment' en imports.");
-        return;
-    }
 
     const isFollowing = myFollowingList.includes(targetUser);
     const updates = {};
@@ -569,8 +557,45 @@ window.toggleFollow = function(targetUser) {
         updates[`users/${targetUser}/followersCount`] = increment(1);
     }
     
-    update(ref(db), updates).catch(err => showError("Error DB: " + err.message));
+    update(ref(db), updates).then(() => {
+        if(currentSection === 'Perfil' && viewingUserProfile === targetUser) {
+            setTimeout(renderCurrentView, 100);
+        }
+    }).catch(err => showError("Error DB: " + err.message));
 };
+
+const avatarInput = document.getElementById('avatarUpload');
+if(avatarInput) {
+    avatarInput.onchange = async function(e) {
+        if(this.files && this.files.length > 0) {
+            const file = this.files[0];
+            const myUser = localStorage.getItem('savedRobloxUser');
+            if(!myUser) return;
+            
+            const cloudName = 'dmrlmfoip';
+            const uploadPreset = 'comunidad_arc';
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', uploadPreset);
+
+            try {
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+                    method: 'POST', body: formData
+                });
+                const data = await res.json();
+                const newAvatarUrl = data.secure_url;
+
+                await update(ref(db, `users/${myUser}`), { avatar: newAvatarUrl });
+                alert("✅ Foto actualizada.");
+
+            } catch(err) {
+                console.error(err);
+                alert("Error al subir.");
+                renderCurrentView(); 
+            }
+        }
+    };
+}
 
 window.toggleLike = function(key, currentCount, btn) {
     const userId = getUserId();
@@ -583,6 +608,7 @@ window.toggleLike = function(key, currentCount, btn) {
 };
 
 function renderPagination(totalItems) {
+    if(currentSection === 'Busqueda' || currentSection === 'Perfil') return; 
     const container = document.getElementById('pagination-container');
     const totalPages = Math.ceil(totalItems / threadsPerPage);
     if(totalPages <= 1) return;
@@ -600,12 +626,8 @@ async function checkUsernameAvailability(username) {
     const userRef = child(usersRef, normalizedUser);
     const snapshot = await get(userRef);
     if (snapshot.exists()) {
-        if (localStorage.getItem('savedRobloxUser') !== username) {
-            return false; 
-        }
-    } else {
-        await set(userRef, { registeredAt: Date.now() });
-    }
+        if (localStorage.getItem('savedRobloxUser') !== username) return false;
+    } else { await set(userRef, { registeredAt: Date.now() }); }
     return true; 
 }
 
@@ -643,26 +665,18 @@ window.openComments = function(key) {
                 let avatar = DEFAULT_AVATAR;
                 if(allUsersMap[authorName] && allUsersMap[authorName].avatar) {
                     avatar = allUsersMap[authorName].avatar;
-                } else if (c.authorAvatar) {
-                    avatar = c.authorAvatar;
-                }
+                } else if (c.authorAvatar) { avatar = c.authorAvatar; }
                 
                 item.innerHTML = `
                     <div style="display:flex; align-items:flex-start; margin-bottom: 5px;">
                         <img src="${avatar}" style="width:25px; height:25px; border-radius:50%; margin-right:8px; object-fit:cover;">
-                        <div>
-                            <span style="color:#00a2ff;font-weight:bold;">${authorName}</span>${badge}: 
-                            <span style="color:#ddd;">${commentWithLinks}</span>
-                        </div>
-                    </div>
-                `;
+                        <div><span style="color:#00a2ff;font-weight:bold;">${authorName}</span>${badge}: <span style="color:#ddd;">${commentWithLinks}</span></div>
+                    </div>`;
                 list.appendChild(item);
             });
-        } else {
-            list.innerHTML = '<p style="text-align:center;color:#777;">Sé el primero en comentar.</p>';
-        }
+        } else { list.innerHTML = '<p style="text-align:center;color:#777;">Sé el primero en comentar.</p>'; }
     });
-
+    
     const cForm = document.getElementById('commentForm');
     if(cForm) {
         cForm.onsubmit = async (e) => {
@@ -679,13 +693,7 @@ window.openComments = function(key) {
                     const uInput = document.getElementById('usernameInput');
                     if(uInput) { uInput.disabled=true; uInput.style.backgroundColor='#252525'; }
                 }
-                
-                await push(commentsRef, { 
-                    text: txt, 
-                    username: usr, 
-                    timestamp: Date.now(),
-                    authorAvatar: myAvatarUrl || DEFAULT_AVATAR 
-                });
+                await push(commentsRef, { text: txt, username: usr, timestamp: Date.now(), authorAvatar: myAvatarUrl || DEFAULT_AVATAR });
                 document.getElementById('commentInput').value = '';
             } catch (error) { showError("Error al comentar."); }
         }
@@ -705,26 +713,18 @@ document.addEventListener('DOMContentLoaded', () => {
         robloxInput.style.cursor = 'not-allowed';
     }
 
-    const searchIn = document.getElementById('searchInput');
-    if(searchIn) {
-        searchIn.oninput = (e) => { searchTerm = e.target.value; currentPage = 1; renderCurrentView(); };
-    }
-
     const btnNew = document.getElementById('newThreadButton');
     if(btnNew) {
         btnNew.onclick = (e) => {
             e.preventDefault();
             const modal = document.getElementById('newThreadModalContent');
             if(modal) {
-                const sectionInput = document.getElementById('sectionInput');
-                const titleSec = document.getElementById('modalSectionTitle');
-                if(sectionInput) sectionInput.value = currentSection;
-                if(titleSec) titleSec.textContent = currentSection;
-                modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
+                document.getElementById("menuDropdown").classList.remove('show');
+                modal.style.display = 'block';
             }
         };
     }
-
+    
     const form = document.getElementById('newThreadForm');
     if(form) {
         form.onsubmit = async (e) => {
@@ -807,29 +807,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
-    initBouncingRobux();
 });
-
-function initBouncingRobux() {
-    const container = document.getElementById('floating-robux-container');
-    if(!container) return;
-    container.innerHTML = ''; 
-    for(let i=0; i<15; i++) {
-        const img = document.createElement('img');
-        img.src = "https://upload.wikimedia.org/wikipedia/commons/c/c7/Robux_2019_Logo_gold.svg";
-        img.className = 'bouncing-robux';
-        img.style.left = Math.random() * 80 + '%';
-        img.style.top = Math.random() * 80 + '%';
-        container.appendChild(img);
-        let x = parseFloat(img.style.left);
-        let y = parseFloat(img.style.top);
-        let dx = (Math.random() - 0.5) * 0.5;
-        let dy = (Math.random() - 0.5) * 0.5;
-        setInterval(() => {
-            x += dx; y += dy;
-            if(x<=0 || x>=95) dx *= -1;
-            if(y<=0 || y>=95) dy *= -1;
-            img.style.left = x + '%'; img.style.top = y + '%';
-        }, 20);
-    }
-}
