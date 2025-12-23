@@ -72,9 +72,9 @@
                         </div>
 
                         <label for="imageFile" class="upload-btn-gray">
-                            <i class="fas fa-image"></i> Multimedia
+                            <i class="fas fa-images"></i> Multimedia (Varios)
                         </label>
-                        <input type="file" id="imageFile" accept="image/*, video/*" style="display:none;">
+                        <input type="file" id="imageFile" accept="image/*, video/*" multiple style="display:none;">
                         <p id="fileName" class="file-name-display"></p>
 
                         <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
@@ -105,11 +105,12 @@
     <div id="updatesModal" class="modal-overlay">
         <div class="info-content">
             <span class="close-button" onclick="closeModal('updatesModal')">&times;</span>
-            <h2>Actualizaciones v3.5</h2>
+            <h2>Actualizaciones v3.8</h2>
             <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #ccc; line-height: 1.6;">
-                <li>Implementación de comentarios y views</li>
-                <li>Implementación multimedia: Fotos/videos</li>
-                <li>Mejora del diseño de la pagina y centrado</li>
+                <li>Estilo Instagram completo</li>
+                <li>Contador (1/5) y Puntos de navegación</li>
+                <li>Imágenes sin bordes negros</li>
+                <li>Verificación y alertas mejoradas</li>
             </ul>
         </div>
     </div>
@@ -137,6 +138,17 @@
         </div>
     </div>
 
+    <div id="customAlertModal" class="modal-overlay" style="z-index: 4000;">
+        <div class="info-content">
+            <h2 style="color: #ff4d4d; border-bottom: 1px solid #ff4d4d;">⚠️ ATENCIÓN</h2>
+            <p id="customAlertText" style="font-size: 1.1em; color: #fff; margin: 20px 0;"></p>
+            <button onclick="document.getElementById('customAlertModal').style.display='none'" 
+                    style="background: #fff; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer;">
+                ENTENDIDO
+            </button>
+        </div>
+    </div>
+
     <input type="text" id="searchInput" placeholder="Buscar...">
 
     <main>
@@ -159,11 +171,17 @@
             document.getElementById("menuDropdown").classList.remove('show');
             document.getElementById(id).style.display = 'block'; 
         }
+        
+        // JS para mostrar cuántos archivos se seleccionaron
         document.getElementById('imageFile').onchange = function() {
-            if(this.files[0]) {
-                let name = this.files[0].name;
-                if(name.length > 25) name = name.substring(0, 25) + '...';
-                document.getElementById('fileName').textContent = name;
+            if(this.files && this.files.length > 0) {
+                if(this.files.length === 1) {
+                    let name = this.files[0].name;
+                    if(name.length > 25) name = name.substring(0, 25) + '...';
+                    document.getElementById('fileName').textContent = name;
+                } else {
+                    document.getElementById('fileName').textContent = `${this.files.length} archivos seleccionados`;
+                }
             } else {
                 document.getElementById('fileName').textContent = "";
             }
