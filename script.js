@@ -32,6 +32,7 @@ let myFollowingList = [];
 let myAvatarUrl = ""; 
 let allUsersMap = {}; 
 
+// --- HERRAMIENTAS ---
 function showError(msg) {
     const alertModal = document.getElementById('customAlertModal');
     const alertText = document.getElementById('customAlertText');
@@ -200,7 +201,7 @@ function renderUserSearch(container) {
     });
 }
 
-// --- RENDERIZAR PERFIL COMPLETO (FINAL CON LÍNEAS DIVISORIAS) ---
+// --- RENDERIZAR PERFIL COMPLETO (FINAL) ---
 function renderFullProfile(container) {
     const targetUser = viewingUserProfile;
     const userData = allUsersMap[targetUser] || {};
@@ -209,6 +210,7 @@ function renderFullProfile(container) {
     const displayName = userData.displayName || targetUser; 
     const status = userData.status || ""; 
     const bio = userData.bio || "";
+    const hasPin = userData.pin ? true : false;
     
     const followers = formatCount(userData.followersCount || 0);
     const following = formatCount(userData.followingCount || 0);
@@ -229,8 +231,10 @@ function renderFullProfile(container) {
     let bubbleHTML = '';
     let plusBtnAction = '';
     let nameAction = ''; 
+    let pinWarningHTML = '';
 
     if (myUser === targetUser) {
+        // ES MI PERFIL
         if (status) {
             bubbleHTML = `<div class="status-bubble" onclick="editMyStatus()">${status}</div>`;
         } else {
@@ -238,7 +242,17 @@ function renderFullProfile(container) {
         }
         plusBtnAction = `onclick="document.getElementById('avatarUpload').click()"`;
         nameAction = `onclick="editMyName()"`;
+
+        if (!hasPin) {
+            pinWarningHTML = `
+                <div style="background: rgba(255, 165, 0, 0.15); border: 1px solid orange; padding: 10px; border-radius: 6px; margin: 15px 0; text-align: center;">
+                    <p style="color: orange; font-size: 0.85em; margin: 0 0 5px 0;">⚠️ No tienes contraseña (PIN)</p>
+                    <button onclick="createMyPin()" style="background: orange; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9em;">CREAR PIN AHORA</button>
+                </div>`;
+        }
+
     } else {
+        // ES OTRO PERFIL
         if (status) bubbleHTML = `<div class="status-bubble">${status}</div>`;
         const isFollowing = myFollowingList.includes(targetUser);
         if(isFollowing) {
@@ -278,6 +292,8 @@ function renderFullProfile(container) {
             <div class="p-stat"><span>${followers}</span><label>Seguidores</label></div>
             <div class="p-stat"><span>${formatCount(totalLikes)}</span><label>Me gusta</label></div>
         </div>
+
+        ${pinWarningHTML}
 
         <div class="profile-bio-section" onclick="${myUser===targetUser ? 'editMyBio()' : ''}">
             ${bio ? makeLinksClickable(bio) : (myUser===targetUser ? '<span style="color:#777; font-style:italic;">Toca para añadir biografía...</span>' : '')}
@@ -440,24 +456,108 @@ window.goToHome = function() {
     searchTerm = ''; 
     const searchInput = document.getElementById('searchInput');
     if(searchInput) searchInput.value = '';
-
     currentSection = 'Publicaciones';
     document.querySelectorAll('.tab-btn').forEach(btn => {
         if(btn.textContent.trim() === 'Publicaciones') btn.classList.add('active');
         else btn.classList.remove('active');
     });
-
     renderCurrentView();
     window.scrollTo(0, 0);
 };
 
+// --- A. SISTEMA DE LOGIN (ENTRAR) ---
+window.loginSystem = async function() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pin = document.getElementById('loginPin').value.trim();
+    
+    if(!user || !pin) { alert("Llena usuario y PIN."); return; }
+
+    try {
+        const snapshot = await get(child(usersRef, user));
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            // Verificar PIN
+            if (data.pin == pin) { 
+                localStorage.setItem('savedRobloxUser', user);
+                localStorage.setItem('userId', 'restored_' + user);
+                alert(`✅ ¡Bienvenido, ${user}!`);
+                closeModal('loginModal');
+                window.location.reload(); 
+            } else {
+                alert("❌ PIN incorrecto.");
+            }
+        } else {
+            alert("⚠️ Usuario no encontrado. Regístrate primero.");
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Error de conexión.");
+    }
+};
+
+// --- B. SISTEMA DE REGISTRO (CREAR CUENTA NUEVA) ---
+window.registerSystem = async function() {
+    const user = document.getElementById('regUser').value.trim();
+    const pin = document.getElementById('regPin').value.trim();
+
+    if(!user) { alert("Escribe un usuario."); return; }
+    if(!pin || pin.length < 4) { alert("El PIN debe tener 4 dígitos."); return; }
+
+    try {
+        const snapshot = await get(child(usersRef, user));
+        if (snapshot.exists()) {
+            // AQUÍ AVISA QUE EL USUARIO ESTÁ EN USO
+            alert(`⚠️ El usuario "${user}" YA EXISTE.\nUsa el botón 'ENTRAR' si es tuyo.`);
+        } else {
+            await set(child(usersRef, user), { 
+                registeredAt: Date.now(),
+                pin: pin,
+                displayName: user,
+                followersCount: 0,
+                followingCount: 0
+            });
+            
+            localStorage.setItem('savedRobloxUser', user);
+            localStorage.setItem('userId', 'new_' + user);
+            
+            alert(`✅ ¡Cuenta creada!\nUsuario: ${user}\nPIN: ${pin}\n\nNo lo olvides.`);
+            closeModal('registerModal');
+            window.location.reload();
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Error al registrar.");
+    }
+};
+
+// --- C. CREAR PIN (PARA ANTIGUOS) ---
+window.createMyPin = function() {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) return;
+
+    const newPin = prompt("🔐 Crea un PIN de 4 dígitos para proteger tu cuenta:");
+
+    if (newPin !== null) {
+        if (newPin.length >= 4) {
+            update(ref(db, `users/${myUser}`), {
+                pin: newPin
+            }).then(() => {
+                alert("✅ ¡PIN Guardado! Ahora puedes usarlo para iniciar sesión en otros dispositivos.");
+            }).catch(err => alert("Error al guardar."));
+        } else {
+            alert("El PIN debe tener al menos 4 caracteres.");
+        }
+    }
+};
+
+// --- ABRIR PERFIL (SEGURIDAD) ---
 window.openFullProfile = function(username) {
     if(!username || username === 'null') {
         username = localStorage.getItem('savedRobloxUser');
     }
 
     if(!username) {
-        showError("⚠️ <strong>No estás identificado.</strong><br><br>En este navegador no tienes un perfil guardado.<br>Por favor, <strong>crea una publicación o comenta</strong> para registrarte aquí.");
+        showError("⚠️ <strong>No estás identificado.</strong><br><br>Para ver tu perfil, ve al Menú > <strong>Iniciar Sesión</strong>.");
         const menu = document.getElementById("menuDropdown");
         if(menu) menu.classList.remove('show');
         return;
@@ -476,13 +576,12 @@ window.openFullProfile = function(username) {
 
 window.openUserProfile = window.openFullProfile;
 
-// --- EDICIÓN ---
+// --- EDICIÓN PERFIL ---
 window.editMyName = function() {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return;
     let currentName = (allUsersMap[myUser] && allUsersMap[myUser].displayName) ? allUsersMap[myUser].displayName : myUser;
-    
-    const newName = prompt("Elige tu nombre para mostrar:", currentName);
+    const newName = prompt("Elige tu nombre:", currentName);
     if (newName !== null && newName.trim() !== "") {
         update(ref(db, `users/${myUser}`), { displayName: newName.substring(0, 20) });
     }
@@ -492,8 +591,7 @@ window.editMyStatus = function() {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return;
     let currentStatus = (allUsersMap[myUser] && allUsersMap[myUser].status) ? allUsersMap[myUser].status : "";
-
-    const newStatus = prompt("Escribe una nota corta (Estado):", currentStatus);
+    const newStatus = prompt("Nota de estado:", currentStatus);
     if (newStatus !== null) {
         update(ref(db, `users/${myUser}`), { status: newStatus.substring(0, 30) });
     }
@@ -503,13 +601,13 @@ window.editMyBio = function() {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return;
     let currentBio = allUsersMap[myUser]?.bio || "";
-    
-    const newBio = prompt("Escribe tu biografía:", currentBio);
+    const newBio = prompt("Biografía:", currentBio);
     if (newBio !== null) {
         update(ref(db, `users/${myUser}`), { bio: newBio });
     }
 };
 
+// --- OTROS EVENTOS ---
 const searchIn = document.getElementById('searchInput');
 if(searchIn) {
     searchIn.oninput = (e) => {
@@ -584,10 +682,8 @@ if(avatarInput) {
                 });
                 const data = await res.json();
                 const newAvatarUrl = data.secure_url;
-
                 await update(ref(db, `users/${myUser}`), { avatar: newAvatarUrl });
                 alert("✅ Foto actualizada.");
-
             } catch(err) {
                 console.error(err);
                 alert("Error al subir.");
@@ -700,27 +796,31 @@ window.openComments = function(key) {
     }
 };
 
+// --- INITIALIZACIÓN Y POSTEO ---
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     changeSection('Publicaciones'); 
     
-    const robloxInput = document.getElementById('robloxUser');
-    const savedRobloxUser = localStorage.getItem('savedRobloxUser');
-    if(savedRobloxUser && robloxInput) {
-        robloxInput.value = savedRobloxUser;
-        robloxInput.disabled = true;
-        robloxInput.style.backgroundColor = '#252525';
-        robloxInput.style.cursor = 'not-allowed';
-    }
-
     const btnNew = document.getElementById('newThreadButton');
     if(btnNew) {
         btnNew.onclick = (e) => {
             e.preventDefault();
+            
+            const savedUser = localStorage.getItem('savedRobloxUser');
+            if(!savedUser) {
+                showError("⚠️ <strong>Acceso Denegado</strong><br>Para publicar, primero debes registrarte o iniciar sesión en el Menú.");
+                return;
+            }
+
             const modal = document.getElementById('newThreadModalContent');
             if(modal) {
                 document.getElementById("menuDropdown").classList.remove('show');
                 modal.style.display = 'block';
+                
+                const userInput = document.getElementById('robloxUser');
+                if(userInput) {
+                    userInput.value = savedUser;
+                }
             }
         };
     }
@@ -729,33 +829,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if(form) {
         form.onsubmit = async (e) => {
             e.preventDefault();
+            
+            const myUser = localStorage.getItem('savedRobloxUser');
+            if (!myUser) {
+                showError("⚠️ <strong>Acceso Denegado</strong><br>Debes iniciar sesión para publicar.");
+                closeModal('newThreadModalContent');
+                return;
+            }
+
             const btn = document.getElementById('submitBtn');
             const originalText = btn.textContent;
-            btn.textContent = "Verificando...";
+            btn.textContent = "Procesando...";
             btn.disabled = true;
 
             try { 
                 const rank = document.getElementById('categorySelect').value; 
-                const user = document.getElementById('robloxUser').value.trim(); 
+                const user = myUser; // Usuario autenticado
                 const title = document.getElementById('title').value;       
                 const desc = document.getElementById('description').value;
                 const section = document.getElementById('sectionInput').value; 
                 const fileInput = document.getElementById('imageFile');
                 const modal = document.getElementById('newThreadModalContent');
 
-                if (!user) { throw new Error("Debes escribir un usuario"); }
-                const isAvailable = await checkUsernameAvailability(user);
-                if (!isAvailable) {
-                    showError(`El usuario <strong>"${user}"</strong> ya está ocupado.`);
-                    btn.disabled = false; btn.textContent = originalText; return;
-                }
-                if(!localStorage.getItem('savedRobloxUser')) {
-                    localStorage.setItem('savedRobloxUser', user);
-                    const rInput = document.getElementById('robloxUser');
-                    if(rInput) { rInput.disabled = true; rInput.style.backgroundColor = '#252525'; }
-                }
-
-                btn.textContent = "Subiendo...";
                 let mediaUrls = [];
                 if(fileInput && fileInput.files && fileInput.files.length > 0) {
                     const cloudName = 'dmrlmfoip';
@@ -790,10 +885,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 await push(threadsRef, newPost);
+                
                 form.reset();
-                if(localStorage.getItem('savedRobloxUser')) {
-                    document.getElementById('robloxUser').value = localStorage.getItem('savedRobloxUser');
-                }
                 document.getElementById('fileName').textContent = '';
                 if(modal) modal.style.display = 'none';
                 btn.textContent = originalText;
