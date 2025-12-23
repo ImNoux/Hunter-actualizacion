@@ -120,6 +120,8 @@ function initFirebaseListener() {
         });
     }
 }
+// --- PARTE 2: RENDERIZADO VISUAL ---
+
 function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
     const noThreadsMessage = document.getElementById('noThreadsMessage');
@@ -163,7 +165,7 @@ function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.classList.add('thread');
 
-    // Carrusel
+    // Carrusel Multimedia
     let mediaHTML = '';
     if (thread.images && Array.isArray(thread.images) && thread.images.length > 0) {
         const totalImages = thread.images.length;
@@ -244,15 +246,18 @@ function renderThread(key, thread, container) {
         followBtnHTML = `<button class="${btnClass}" onclick="toggleFollow('${authorName}')">${btnText}</button>`;
     }
 
-    // --- AQUÍ APLICAMOS LA FOTO POR DEFECTO ---
-    // Si thread.authorAvatar no existe, usamos DEFAULT_AVATAR
+    // --- FOTO EN EL POST (AQUÍ ESTÁ LA CLAVE) ---
+    // 1. Buscamos la foto guardada en el post. Si no tiene, usamos la Default.
     const userAvatar = thread.authorAvatar || DEFAULT_AVATAR;
 
+    // 2. Armamos el HTML con la estructura Flexbox para que quede al lado
     div.innerHTML = `
         <div class="thread-date">${thread.displayDate}</div>
+        
         <div class="post-header">
-            <img src="${userAvatar}" class="user-avatar-small" alt="Avatar">
-            <div style="flex: 1;">
+            <img src="${userAvatar}" class="user-avatar-small" alt="Avatar" onclick="openUserProfile('${authorName}')" style="cursor:pointer;">
+            
+            <div class="post-header-info">
                 <div style="font-size: 0.9em; color: #aaa;">
                     ${rankBadge} 
                     <strong class="clickable-name" style="color: #fff;" onclick="openUserProfile('${authorName}')">${authorName}</strong> 
@@ -261,11 +266,14 @@ function renderThread(key, thread, container) {
                 </div>
             </div>
         </div>
+
         <h2>${thread.title}</h2>
         <p>${descriptionWithLinks}</p>
+        
         <div class="media-container-hook-${key}">
             ${mediaHTML}
         </div>
+        
         <div class="thread-actions">
             <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${rawLikeCount}, this)">
                 <i class="fas fa-heart"></i> ${likeCountDisplay}
@@ -280,6 +288,7 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 
+    // Eventos Carrusel
     if (thread.images && thread.images.length > 0) {
         const injectedWrapper = div.querySelector(`.media-container-hook-${key} .media-wrapper`);
         if(injectedWrapper) {
