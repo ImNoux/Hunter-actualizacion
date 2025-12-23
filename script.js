@@ -463,13 +463,11 @@ window.goToHome = function() {
     searchTerm = ''; 
     const searchInput = document.getElementById('searchInput');
     if(searchInput) searchInput.value = '';
-
     currentSection = 'Publicaciones';
     document.querySelectorAll('.tab-btn').forEach(btn => {
         if(btn.textContent.trim() === 'Publicaciones') btn.classList.add('active');
         else btn.classList.remove('active');
     });
-
     renderCurrentView();
     window.scrollTo(0, 0);
 };
@@ -534,6 +532,16 @@ window.registerSystem = async function() {
     } catch (error) {
         console.error(error);
         alert("Error al registrar.");
+    }
+};
+
+// --- NUEVO: CERRAR SESIÓN ---
+window.logoutSystem = function() {
+    if(confirm("¿Seguro que quieres cerrar sesión?")) {
+        localStorage.removeItem('savedRobloxUser');
+        localStorage.removeItem('userId');
+        alert("👋 Has cerrado sesión.");
+        window.location.reload(); // Recargar para que aparezca 'Iniciar Sesión' de nuevo
     }
 };
 
@@ -740,9 +748,7 @@ async function checkUsernameAvailability(username) {
     return true; 
 }
 
-// --- COMENTARIOS (CON LÓGICA DE VISTAS AL COMENTAR) ---
 window.openComments = function(key) {
-    // YA NO SUBIMOS VISTAS AQUÍ. SOLO ABRIMOS MODAL.
     const modal = document.getElementById('commentsModal');
     const list = document.getElementById('commentsList');
     list.innerHTML = '<p style="text-align:center;">Cargando...</p>';
@@ -805,10 +811,7 @@ window.openComments = function(key) {
                 const txt = document.getElementById('commentInput').value;
                 const usr = myUser;
                 
-                // 1. PUBLICAR EL COMENTARIO
                 await push(commentsRef, { text: txt, username: usr, timestamp: Date.now(), authorAvatar: myAvatarUrl || DEFAULT_AVATAR });
-                
-                // 2. ¡AQUÍ SUBIMOS LA VISTA! (SOLO SI COMENTA)
                 const threadViewRef = ref(db, `threads/${key}/views`);
                 runTransaction(threadViewRef, (currentViews) => { return (currentViews || 0) + 1; });
 
@@ -822,12 +825,26 @@ document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     changeSection('Publicaciones'); 
     
+    // --- LÓGICA DEL MENÚ DINÁMICO ---
+    const savedUser = localStorage.getItem('savedRobloxUser');
+    const menuLogin = document.getElementById('menuLogin');
+    const menuLogout = document.getElementById('menuLogout');
+
+    if (savedUser) {
+        // SI ESTÁ LOGUEADO: Ocultar login, Mostrar cerrar sesión
+        if(menuLogin) menuLogin.style.display = 'none';
+        if(menuLogout) menuLogout.style.display = 'block';
+    } else {
+        // SI NO ESTÁ LOGUEADO: Mostrar login, Ocultar cerrar sesión
+        if(menuLogin) menuLogin.style.display = 'block';
+        if(menuLogout) menuLogout.style.display = 'none';
+    }
+
     const btnNew = document.getElementById('newThreadButton');
     if(btnNew) {
         btnNew.onclick = (e) => {
             e.preventDefault();
             
-            const savedUser = localStorage.getItem('savedRobloxUser');
             if(!savedUser) {
                 showError("⚠️ <strong>Regístrate primero</strong><br>Para publicar, ve al Menú > Registrarse.");
                 return;
@@ -837,11 +854,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(modal) {
                 document.getElementById("menuDropdown").classList.remove('show');
                 modal.style.display = 'block';
-                
                 const userInput = document.getElementById('robloxUser');
-                if(userInput) {
-                    userInput.value = savedUser;
-                }
+                if(userInput) userInput.value = savedUser;
             }
         };
     }
@@ -850,7 +864,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(form) {
         form.onsubmit = async (e) => {
             e.preventDefault();
-            
             const myUser = localStorage.getItem('savedRobloxUser');
             if (!myUser) {
                 showError("⚠️ <strong>Acceso Denegado</strong><br>Debes iniciar sesión para publicar.");
@@ -860,12 +873,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const btn = document.getElementById('submitBtn');
             const originalText = btn.textContent;
-            btn.textContent = "Subiendo...";
+            btn.textContent = "Procesando...";
             btn.disabled = true;
 
             try { 
                 const rank = document.getElementById('categorySelect').value; 
-                const user = myUser; // Usamos el usuario autenticado
+                const user = myUser; 
                 const title = document.getElementById('title').value;       
                 const desc = document.getElementById('description').value;
                 const section = document.getElementById('sectionInput').value; 
