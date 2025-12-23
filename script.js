@@ -1,9 +1,11 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
+// Importamos 'increment' para los contadores
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, runTransaction, get, child, set, increment, onChildAdded } from "https://esm.sh/firebase/database";
 
-// --- IMAGEN POR DEFECTO (Estilo FB/IG) ---
+// --- IMAGEN POR DEFECTO (Fantasmita) ---
 const DEFAULT_AVATAR = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
 
+// --- CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyDM9E8Y_YW-ld8MH8-yKS345hklA0v5P_w",
     authDomain: "hunterteam.firebaseapp.com",
@@ -27,8 +29,10 @@ let currentSection = 'Publicaciones';
 let allThreadsData = []; 
 let verifiedUsersList = []; 
 let myFollowingList = []; 
-let myAvatarUrl = ""; // Se llenará con tu foto o vacío
+let myAvatarUrl = ""; 
+let allUsersMap = {}; // AQUÍ guardaremos la info actualizada de todos
 
+// --- FUNCIONES DE AYUDA ---
 function showError(msg) {
     const alertModal = document.getElementById('customAlertModal');
     const alertText = document.getElementById('customAlertText');
@@ -79,7 +83,21 @@ function getUserId() {
 }
 
 function initFirebaseListener() {
-    // 1. Posts
+    // 1. CARGAR TODOS LOS USUARIOS (Para fotos en vivo)
+    onValue(usersRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            allUsersMap = data; // Actualizamos el mapa de usuarios
+        } else {
+            allUsersMap = {};
+        }
+        // Si ya hay posts en pantalla, refrescamos para mostrar las fotos nuevas
+        if (allThreadsData.length > 0) {
+            renderCurrentView();
+        }
+    });
+
+    // 2. Posts
     const getThreads = query(threadsRef, orderByChild('timestamp'));
     onValue(getThreads, (snapshot) => {
         const data = snapshot.val();
@@ -91,7 +109,7 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 
-    // 2. Verificados
+    // 3. Verificados
     onValue(verifiedRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -102,7 +120,7 @@ function initFirebaseListener() {
         renderCurrentView(); 
     });
 
-    // 3. Mis Datos
+    // 4. Mis Datos (Avatar y Seguidos)
     const myUser = localStorage.getItem('savedRobloxUser');
     if (myUser) {
         const myUserRef = ref(db, `users/${myUser}`);
@@ -110,18 +128,14 @@ function initFirebaseListener() {
             const data = snapshot.val();
             if (data) {
                 myFollowingList = data.following ? Object.keys(data.following) : [];
-                // Si tienes foto, la guardamos. Si no, guardamos la DEFAULT
                 myAvatarUrl = data.avatar || DEFAULT_AVATAR;
             } else {
                 myFollowingList = [];
                 myAvatarUrl = DEFAULT_AVATAR;
             }
-            renderCurrentView();
         });
     }
 }
-// --- PARTE 2: RENDERIZADO VISUAL ---
-
 function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
     const noThreadsMessage = document.getElementById('noThreadsMessage');
@@ -246,16 +260,20 @@ function renderThread(key, thread, container) {
         followBtnHTML = `<button class="${btnClass}" onclick="toggleFollow('${authorName}')">${btnText}</button>`;
     }
 
-    // --- FOTO EN EL POST (AQUÍ ESTÁ LA CLAVE) ---
-    // 1. Buscamos la foto guardada en el post. Si no tiene, usamos la Default.
-    const userAvatar = thread.authorAvatar || DEFAULT_AVATAR;
+    // --- FOTO "EN VIVO" EN EL POST ---
+    let currentAvatar = DEFAULT_AVATAR;
+    // Buscamos en el mapa actualizado. Si no está, usamos la del post o la default.
+    if (allUsersMap[authorName] && allUsersMap[authorName].avatar) {
+        currentAvatar = allUsersMap[authorName].avatar;
+    } else if (thread.authorAvatar) {
+        currentAvatar = thread.authorAvatar;
+    }
 
-    // 2. Armamos el HTML con la estructura Flexbox para que quede al lado
     div.innerHTML = `
         <div class="thread-date">${thread.displayDate}</div>
         
         <div class="post-header">
-            <img src="${userAvatar}" class="user-avatar-small" alt="Avatar" onclick="openUserProfile('${authorName}')" style="cursor:pointer;">
+            <img src="${currentAvatar}" class="user-avatar-small" alt="Avatar" onclick="openUserProfile('${authorName}')" style="cursor:pointer;">
             
             <div class="post-header-info">
                 <div style="font-size: 0.9em; color: #aaa;">
@@ -288,7 +306,6 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 
-    // Eventos Carrusel
     if (thread.images && thread.images.length > 0) {
         const injectedWrapper = div.querySelector(`.media-container-hook-${key} .media-wrapper`);
         if(injectedWrapper) {
@@ -309,12 +326,12 @@ function renderThread(key, thread, container) {
         }
     }
 }
-// --- PARTE 3: ACCIONES Y PERFIL ---
+// --- PARTE 3: ACCIONES Y LÓGICA ---
 
+// 1. ABRIR PERFIL
 window.openUserProfile = function(targetUser) {
     if(!targetUser) return;
 
-    // Reset Visual con DEFAULT_AVATAR
     const elements = {
         name: document.getElementById('profileModalName'),
         rank: document.getElementById('profileModalRank'),
@@ -331,7 +348,14 @@ window.openUserProfile = function(targetUser) {
     if(elements.name) elements.name.textContent = targetUser;
     if(elements.rank) elements.rank.textContent = "Cargando...";
     if(elements.followers) elements.followers.textContent = "-";
-    if(elements.img) elements.img.src = DEFAULT_AVATAR; // PONEMOS LA DEFAULT DE INICIO
+    // Ponemos la foto actual del mapa global, o la default
+    if(elements.img) {
+        if(allUsersMap[targetUser] && allUsersMap[targetUser].avatar) {
+            elements.img.src = allUsersMap[targetUser].avatar;
+        } else {
+            elements.img.src = DEFAULT_AVATAR;
+        }
+    }
     if(elements.verifiedBadge) elements.verifiedBadge.innerHTML = ""; 
 
     const modal = document.getElementById('userProfileModal');
@@ -346,10 +370,8 @@ window.openUserProfile = function(targetUser) {
         if(elements.followers) elements.followers.textContent = formatCount(data.followersCount || 0);
         if(elements.following) elements.following.textContent = formatCount(data.followingCount || 0);
         
-        // Si hay avatar en DB, úsalo. Si no, usa DEFAULT.
-        if(elements.img) {
-            elements.img.src = data.avatar || DEFAULT_AVATAR;
-        }
+        // Listener directo por si cambia mientras vemos el perfil
+        if(elements.img) elements.img.src = data.avatar || DEFAULT_AVATAR;
 
         let posts = 0;
         let likes = 0;
@@ -398,6 +420,7 @@ window.openUserProfile = function(targetUser) {
     }
 };
 
+// 2. SUBIR FOTO DE PERFIL
 const avatarInput = document.getElementById('avatarUpload');
 if(avatarInput) {
     avatarInput.onchange = async function(e) {
@@ -429,7 +452,6 @@ if(avatarInput) {
                 img.src = newAvatarUrl;
                 img.style.opacity = "1";
                 alert("✅ Foto de perfil actualizada.");
-                // Actualizamos variable local también
                 myAvatarUrl = newAvatarUrl;
 
             } catch(err) {
@@ -552,8 +574,13 @@ window.openComments = function(key) {
                 const isVerified = verifiedUsersList.includes(authorName.toLowerCase());
                 const badge = isVerified ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
                 
-                // --- FOTO EN COMENTARIOS (O DEFAULT) ---
-                const avatar = c.authorAvatar || DEFAULT_AVATAR;
+                // Avatar en vivo en comentarios también
+                let avatar = DEFAULT_AVATAR;
+                if(allUsersMap[authorName] && allUsersMap[authorName].avatar) {
+                    avatar = allUsersMap[authorName].avatar;
+                } else if (c.authorAvatar) {
+                    avatar = c.authorAvatar;
+                }
                 
                 item.innerHTML = `
                     <div style="display:flex; align-items:flex-start; margin-bottom: 5px;">
@@ -588,12 +615,10 @@ window.openComments = function(key) {
                     if(uInput) { uInput.disabled=true; uInput.style.backgroundColor='#252525'; }
                 }
                 
-                // GUARDAR AVATAR EN EL COMENTARIO
                 await push(commentsRef, { 
                     text: txt, 
                     username: usr, 
                     timestamp: Date.now(),
-                    // Si tienes foto la usa, si no la DEFAULT
                     authorAvatar: myAvatarUrl || DEFAULT_AVATAR 
                 });
                 document.getElementById('commentInput').value = '';
@@ -696,7 +721,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     timestamp: Date.now(),
                     displayDate: new Date().toLocaleDateString('es-ES'),
                     views: 0,
-                    // Si no tiene foto, guardamos la DEFAULT en el post
                     authorAvatar: myAvatarUrl || DEFAULT_AVATAR
                 };
 
