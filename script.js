@@ -1,10 +1,9 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, runTransaction, get, child, set, increment, onChildAdded } from "https://esm.sh/firebase/database";
 
-// --- IMAGEN POR DEFECTO ---
+// --- CONFIG ---
 const DEFAULT_AVATAR = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
 
-// --- CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyDM9E8Y_YW-ld8MH8-yKS345hklA0v5P_w",
     authDomain: "hunterteam.firebaseapp.com",
@@ -32,7 +31,6 @@ let myFollowingList = [];
 let myAvatarUrl = ""; 
 let allUsersMap = {}; 
 
-// --- HERRAMIENTAS ---
 function showError(msg) {
     const alertModal = document.getElementById('customAlertModal');
     const alertText = document.getElementById('customAlertText');
@@ -83,14 +81,12 @@ function getUserId() {
 }
 
 function initFirebaseListener() {
-    // 1. Usuarios
     onValue(usersRef, (snapshot) => {
         const data = snapshot.val();
         if (data) { allUsersMap = data; } else { allUsersMap = {}; }
         if (allThreadsData.length > 0) renderCurrentView();
     });
 
-    // 2. Posts
     const getThreads = query(threadsRef, orderByChild('timestamp'));
     onValue(getThreads, (snapshot) => {
         const data = snapshot.val();
@@ -100,7 +96,6 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 
-    // 3. Verificados
     onValue(verifiedRef, (snapshot) => {
         const data = snapshot.val();
         if (data) { verifiedUsersList = Object.keys(data).map(name => name.toLowerCase()); } 
@@ -108,7 +103,6 @@ function initFirebaseListener() {
         renderCurrentView(); 
     });
 
-    // 4. Mis Datos
     const myUser = localStorage.getItem('savedRobloxUser');
     if (myUser) {
         const myUserRef = ref(db, `users/${myUser}`);
@@ -146,7 +140,6 @@ function renderCurrentView() {
         return;
     }
 
-    // LISTA DE POSTS
     let filtered = allThreadsData.filter(([key, thread]) => {
         let postSection = thread.section; 
         let postCategory = thread.category;
@@ -206,16 +199,18 @@ function renderUserSearch(container) {
     });
 }
 
-// --- RENDERIZAR PERFIL COMPLETO (DISEÑO FINAL) ---
 function renderFullProfile(container) {
     const targetUser = viewingUserProfile;
     const userData = allUsersMap[targetUser] || {};
     
     const avatar = userData.avatar || DEFAULT_AVATAR;
-    const displayName = userData.displayName || targetUser; 
+    const displayName = userData.displayName || targetUser;
+    
+    // AQUÍ MOSTRAMOS EL USUARIO PERSONALIZADO (HANDLE) O EL LOGIN ID
+    const displayHandle = userData.customHandle || targetUser;
+
     const status = userData.status || ""; 
     const bio = userData.bio || "";
-    // Verificamos si tiene PIN
     const hasPin = userData.pin ? true : false;
     
     const followers = formatCount(userData.followersCount || 0);
@@ -236,20 +231,26 @@ function renderFullProfile(container) {
     const myUser = localStorage.getItem('savedRobloxUser');
     let bubbleHTML = '';
     let plusBtnAction = '';
-    let nameAction = ''; 
     let pinWarningHTML = '';
+    let editProfileButtonHTML = '';
 
     if (myUser === targetUser) {
         // ES MI PERFIL
         if (status) {
-            bubbleHTML = `<div class="status-bubble" onclick="editMyStatus()">${status}</div>`;
+            bubbleHTML = `<div class="status-bubble" onclick="openEditProfileModal()">${status}</div>`;
         } else {
-            bubbleHTML = `<div class="status-bubble" onclick="editMyStatus()" style="opacity:0.5;">+ Nota</div>`;
+            bubbleHTML = `<div class="status-bubble" onclick="openEditProfileModal()" style="opacity:0.5;">+ Nota</div>`;
         }
-        plusBtnAction = `onclick="document.getElementById('avatarUpload').click()"`;
-        nameAction = `onclick="editMyName()"`;
+        
+        plusBtnAction = `onclick="openEditProfileModal()"`; // Clic en el "+" lleva a editar
+        
+        // BOTÓN EDITAR PERFIL (VISIBLE)
+        editProfileButtonHTML = `
+            <button onclick="openEditProfileModal()" style="width:100%; margin-top:15px; padding:10px; background:transparent; color:#fff; border:1px solid #555; border-radius:6px; font-weight:bold; cursor:pointer;">
+                Editar perfil
+            </button>
+        `;
 
-        // Alerta para usuarios antiguos sin PIN
         if (!hasPin) {
             pinWarningHTML = `
                 <div style="background: rgba(255, 165, 0, 0.15); border: 1px solid orange; padding: 10px; border-radius: 6px; margin: 15px 0; text-align: center;">
@@ -267,7 +268,13 @@ function renderFullProfile(container) {
         } else {
              plusBtnAction = `onclick="toggleFollow('${targetUser}')"`;
         }
-        nameAction = `style="cursor:default;"`;
+        
+        // BOTÓN SEGUIR
+        editProfileButtonHTML = `
+            <button onclick="toggleFollow('${targetUser}')" style="width:100%; margin-top:15px; padding:10px; background:${isFollowing ? '#333' : '#00a2ff'}; color:white; border:${isFollowing ? '1px solid #555' : 'none'}; border-radius:6px; font-weight:bold; cursor:pointer;">
+                ${isFollowing ? 'Siguiendo' : 'Seguir'}
+            </button>
+        `;
     }
 
     let plusIcon = (myUser === targetUser) ? '<i class="fas fa-camera" style="font-size:0.8em;"></i>' : '<i class="fas fa-plus"></i>';
@@ -286,9 +293,9 @@ function renderFullProfile(container) {
             </div>
 
             <div class="profile-info-column">
-                <h2 class="display-name" ${nameAction}>${displayName}</h2>
+                <h2 class="display-name" onclick="openEditProfileModal()">${displayName}</h2>
                 <div class="username-handle">
-                    <span>@${targetUser}</span>
+                    <span>@${displayHandle}</span>
                     ${verifyBadge}
                 </div>
             </div>
@@ -302,15 +309,11 @@ function renderFullProfile(container) {
 
         ${pinWarningHTML}
 
-        <div class="profile-bio-section" onclick="${myUser===targetUser ? 'editMyBio()' : ''}">
-            ${bio ? makeLinksClickable(bio) : (myUser===targetUser ? '<span style="color:#777; font-style:italic;">Toca para añadir biografía...</span>' : '')}
+        <div class="profile-bio-section">
+            ${bio ? makeLinksClickable(bio) : (myUser===targetUser ? '<span style="color:#777; font-style:italic;" onclick="openEditProfileModal()">Toca para añadir biografía...</span>' : '')}
         </div>
         
-        ${myUser !== targetUser ? `
-            <button onclick="toggleFollow('${targetUser}')" style="width:100%; margin-top:15px; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; font-weight:bold; cursor:pointer;">
-                ${myFollowingList.includes(targetUser) ? 'Siguiendo' : 'Seguir'}
-            </button>
-        ` : ''}
+        ${editProfileButtonHTML}
     `;
     container.appendChild(header);
 
@@ -387,6 +390,13 @@ function renderThread(key, thread, container) {
     const userId = getUserId();
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
     const authorName = thread.username || 'Usuario';
+    
+    // Obtener handle personalizado para el post
+    let displayAuthorName = authorName;
+    if (allUsersMap[authorName] && allUsersMap[authorName].customHandle) {
+        displayAuthorName = allUsersMap[authorName].customHandle;
+    }
+
     const isVerifiedAuto = verifiedUsersList.includes(authorName.toLowerCase());
     const verifyBadge = (isVerifiedAuto || thread.verificado) 
         ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' 
@@ -424,7 +434,7 @@ function renderThread(key, thread, container) {
             </div>
             <div class="post-header-info">
                 <div style="font-size: 0.9em; color: #aaa;">
-                    ${rankBadge} <strong class="clickable-name" style="color: #fff;" onclick="openFullProfile('${authorName}')">${authorName}</strong> ${verifyBadge}
+                    ${rankBadge} <strong class="clickable-name" style="color: #fff;" onclick="openFullProfile('${authorName}')">${displayAuthorName}</strong> ${verifyBadge}
                 </div>
             </div>
         </div>
@@ -476,7 +486,6 @@ window.goToHome = function() {
 window.loginSystem = async function() {
     const user = document.getElementById('loginUser').value.trim();
     const pin = document.getElementById('loginPin').value.trim();
-    
     if(!user || !pin) { alert("Llena usuario y PIN."); return; }
 
     try {
@@ -489,16 +498,9 @@ window.loginSystem = async function() {
                 alert(`✅ ¡Bienvenido, ${user}!`);
                 closeModal('loginModal');
                 window.location.reload(); 
-            } else {
-                alert("❌ PIN incorrecto.");
-            }
-        } else {
-            alert("⚠️ Usuario no encontrado. Regístrate primero.");
-        }
-    } catch (error) {
-        console.error(error);
-        alert("Error de conexión.");
-    }
+            } else { alert("❌ PIN incorrecto."); }
+        } else { alert("⚠️ Usuario no encontrado. Regístrate primero."); }
+    } catch (error) { console.error(error); alert("Error de conexión."); }
 };
 
 // --- B. SISTEMA DE REGISTRO (CREAR CUENTA) ---
@@ -518,120 +520,136 @@ window.registerSystem = async function() {
                 registeredAt: Date.now(),
                 pin: pin,
                 displayName: user,
+                customHandle: user, // Por defecto el handle es el mismo
                 followersCount: 0,
                 followingCount: 0
             });
-            
             localStorage.setItem('savedRobloxUser', user);
             localStorage.setItem('userId', 'new_' + user);
-            
-            alert(`✅ ¡Cuenta creada!\nUsuario: ${user}\nPIN: ${pin}\n\nNo lo olvides.`);
+            alert(`✅ ¡Cuenta creada!\nUsuario: ${user}\nPIN: ${pin}`);
             closeModal('registerModal');
             window.location.reload();
         }
-    } catch (error) {
-        console.error(error);
-        alert("Error al registrar.");
-    }
+    } catch (error) { console.error(error); alert("Error al registrar."); }
 };
 
-// --- NUEVO: CERRAR SESIÓN ---
+// --- NUEVO: SISTEMA DE EDICIÓN DE PERFIL PRO ---
+window.openEditProfileModal = function() {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) return;
+
+    const userData = allUsersMap[myUser] || {};
+    document.getElementById('editAvatarPreview').src = userData.avatar || DEFAULT_AVATAR;
+    document.getElementById('editNameInput').value = userData.displayName || myUser;
+    document.getElementById('editHandleInput').value = userData.customHandle || myUser;
+    document.getElementById('editBioInput').value = userData.bio || "";
+    document.getElementById('editStatusInput').value = userData.status || "";
+    openModal('editProfileModal');
+};
+
+window.saveProfileChanges = async function() {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) return;
+
+    const btn = document.getElementById('saveProfileBtn');
+    const originalText = btn.textContent;
+    btn.textContent = "Guardando...";
+    
+    const newName = document.getElementById('editNameInput').value.trim();
+    const newHandle = document.getElementById('editHandleInput').value.trim();
+    const newBio = document.getElementById('editBioInput').value.trim();
+    const newStatus = document.getElementById('editStatusInput').value.trim();
+
+    const userData = allUsersMap[myUser] || {};
+    const updates = {};
+    const now = Date.now();
+
+    // 1. VALIDAR NOMBRE (7 DÍAS)
+    const lastChangeName = userData.lastChangedName || 0;
+    const daysSinceName = (now - lastChangeName) / (1000 * 60 * 60 * 24);
+    
+    if (newName !== (userData.displayName || myUser)) {
+        if (daysSinceName < 7) {
+            alert(`⚠️ No puedes cambiar el nombre todavía.\nFaltan ${Math.ceil(7 - daysSinceName)} días.`);
+            btn.textContent = originalText;
+            return;
+        }
+        updates[`users/${myUser}/displayName`] = newName;
+        updates[`users/${myUser}/lastChangedName`] = now;
+    }
+
+    // 2. VALIDAR USUARIO/HANDLE (15 DÍAS)
+    const lastChangeHandle = userData.lastChangedHandle || 0;
+    const daysSinceHandle = (now - lastChangeHandle) / (1000 * 60 * 60 * 24);
+
+    if (newHandle !== (userData.customHandle || myUser)) {
+        if (daysSinceHandle < 15) {
+            alert(`⚠️ No puedes cambiar el usuario todavía.\nFaltan ${Math.ceil(15 - daysSinceHandle)} días.`);
+            btn.textContent = originalText;
+            return;
+        }
+        updates[`users/${myUser}/customHandle`] = newHandle;
+        updates[`users/${myUser}/lastChangedHandle`] = now;
+    }
+
+    // 3. BIO Y ESTADO (SIN LÍMITE)
+    updates[`users/${myUser}/bio`] = newBio;
+    updates[`users/${myUser}/status`] = newStatus;
+
+    try {
+        await update(ref(db), updates);
+        alert("✅ Perfil actualizado.");
+        closeModal('editProfileModal');
+        renderCurrentView();
+    } catch (e) { console.error(e); alert("Error al guardar."); } 
+    finally { btn.textContent = originalText; }
+};
+
+// --- CERRAR SESIÓN ---
 window.logoutSystem = function() {
     if(confirm("¿Seguro que quieres cerrar sesión?")) {
         localStorage.removeItem('savedRobloxUser');
         localStorage.removeItem('userId');
         alert("👋 Has cerrado sesión.");
-        window.location.reload(); // Recargar para que aparezca 'Iniciar Sesión' de nuevo
+        window.location.reload();
     }
 };
 
-// --- C. CREAR PIN (PARA ANTIGUOS) ---
 window.createMyPin = function() {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return;
-
-    const newPin = prompt("🔐 Crea un PIN de 4 dígitos para proteger tu cuenta:");
-
+    const newPin = prompt("🔐 Crea un PIN de 4 dígitos:");
     if (newPin !== null) {
         if (newPin.length >= 4) {
-            update(ref(db, `users/${myUser}`), {
-                pin: newPin
-            }).then(() => {
-                alert("✅ ¡PIN Guardado! Ahora puedes usarlo para iniciar sesión en otros dispositivos.");
-            }).catch(err => alert("Error al guardar."));
-        } else {
-            alert("El PIN debe tener al menos 4 caracteres.");
-        }
+            update(ref(db, `users/${myUser}`), { pin: newPin }).then(() => alert("✅ PIN Guardado")).catch(err => alert("Error"));
+        } else { alert("Mínimo 4 dígitos"); }
     }
 };
 
-// --- ABRIR PERFIL (SEGURIDAD) ---
 window.openFullProfile = function(username) {
     if(!username || username === 'null') {
         username = localStorage.getItem('savedRobloxUser');
     }
-
     if(!username) {
-        showError("⚠️ <strong>No estás identificado.</strong><br><br>Para ver tu perfil, ve al Menú > <strong>Iniciar Sesión</strong>.");
-        const menu = document.getElementById("menuDropdown");
-        if(menu) menu.classList.remove('show');
+        showError("⚠️ <strong>No estás identificado.</strong><br>Inicia sesión para ver perfiles.");
+        document.getElementById("menuDropdown").classList.remove('show');
         return;
     }
-    
     viewingUserProfile = username; 
     currentSection = 'Perfil';     
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    
     renderCurrentView();
     window.scrollTo(0, 0);
-    
-    const menu = document.getElementById("menuDropdown");
-    if(menu) menu.classList.remove('show');
+    document.getElementById("menuDropdown").classList.remove('show');
 };
-
 window.openUserProfile = window.openFullProfile;
-
-// --- EDICIÓN PERFIL ---
-window.editMyName = function() {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if (!myUser) return;
-    let currentName = (allUsersMap[myUser] && allUsersMap[myUser].displayName) ? allUsersMap[myUser].displayName : myUser;
-    const newName = prompt("Elige tu nombre:", currentName);
-    if (newName !== null && newName.trim() !== "") {
-        update(ref(db, `users/${myUser}`), { displayName: newName.substring(0, 20) });
-    }
-};
-
-window.editMyStatus = function() {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if (!myUser) return;
-    let currentStatus = (allUsersMap[myUser] && allUsersMap[myUser].status) ? allUsersMap[myUser].status : "";
-    const newStatus = prompt("Nota de estado:", currentStatus);
-    if (newStatus !== null) {
-        update(ref(db, `users/${myUser}`), { status: newStatus.substring(0, 30) });
-    }
-};
-
-window.editMyBio = function() {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if (!myUser) return;
-    let currentBio = allUsersMap[myUser]?.bio || "";
-    const newBio = prompt("Biografía:", currentBio);
-    if (newBio !== null) {
-        update(ref(db, `users/${myUser}`), { bio: newBio });
-    }
-};
 
 // --- OTROS EVENTOS ---
 const searchIn = document.getElementById('searchInput');
 if(searchIn) {
     searchIn.oninput = (e) => {
         searchTerm = e.target.value.trim();
-        if(searchTerm.length > 0) {
-            currentSection = 'Busqueda'; 
-        } else {
-            currentSection = 'Publicaciones'; 
-        }
+        if(searchTerm.length > 0) { currentSection = 'Busqueda'; } else { currentSection = 'Publicaciones'; }
         renderCurrentView();
     };
 }
@@ -657,7 +675,6 @@ window.toggleFollow = function(targetUser) {
 
     const isFollowing = myFollowingList.includes(targetUser);
     const updates = {};
-    
     if (isFollowing) {
         updates[`users/${myUser}/following/${targetUser}`] = null; 
         updates[`users/${targetUser}/followers/${myUser}`] = null;
@@ -669,11 +686,8 @@ window.toggleFollow = function(targetUser) {
         updates[`users/${myUser}/followingCount`] = increment(1);
         updates[`users/${targetUser}/followersCount`] = increment(1);
     }
-    
     update(ref(db), updates).then(() => {
-        if(currentSection === 'Perfil' && viewingUserProfile === targetUser) {
-            setTimeout(renderCurrentView, 100);
-        }
+        if(currentSection === 'Perfil' && viewingUserProfile === targetUser) { setTimeout(renderCurrentView, 100); }
     }).catch(err => showError("Error DB: " + err.message));
 };
 
@@ -684,36 +698,28 @@ if(avatarInput) {
             const file = this.files[0];
             const myUser = localStorage.getItem('savedRobloxUser');
             if(!myUser) return;
-            
             const cloudName = 'dmrlmfoip';
             const uploadPreset = 'comunidad_arc';
             const formData = new FormData();
             formData.append('file', file);
             formData.append('upload_preset', uploadPreset);
-
             try {
-                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
-                    method: 'POST', body: formData
-                });
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
                 const data = await res.json();
-                const newAvatarUrl = data.secure_url;
-                await update(ref(db, `users/${myUser}`), { avatar: newAvatarUrl });
+                await update(ref(db, `users/${myUser}`), { avatar: data.secure_url });
+                // Actualizamos la vista previa del modal también si está abierto
+                const preview = document.getElementById('editAvatarPreview');
+                if(preview) preview.src = data.secure_url;
                 alert("✅ Foto actualizada.");
-            } catch(err) {
-                console.error(err);
-                alert("Error al subir.");
-                renderCurrentView(); 
-            }
+                renderCurrentView();
+            } catch(err) { console.error(err); alert("Error al subir."); }
         }
     };
 }
 
 window.toggleLike = function(key, currentCount, btn) {
     const myUser = localStorage.getItem('savedRobloxUser');
-    if (!myUser) {
-        showError("⚠️ <strong>Acción no permitida</strong><br>Debes iniciar sesión para dar 'Me gusta'.");
-        return; 
-    }
+    if (!myUser) { showError("⚠️ Inicia sesión para dar Like."); return; }
 
     const userId = getUserId();
     const liked = btn.classList.contains('liked');
@@ -800,21 +806,15 @@ window.openComments = function(key) {
     if(cForm) {
         cForm.onsubmit = async (e) => {
             e.preventDefault();
-            
             const myUser = localStorage.getItem('savedRobloxUser');
-            if(!myUser) {
-                showError("⚠️ <strong>Acción Bloqueada</strong><br>Regístrate o inicia sesión para comentar.");
-                return;
-            }
+            if(!myUser) { showError("⚠️ Inicia sesión para comentar."); return; }
 
             try {
                 const txt = document.getElementById('commentInput').value;
                 const usr = myUser;
-                
                 await push(commentsRef, { text: txt, username: usr, timestamp: Date.now(), authorAvatar: myAvatarUrl || DEFAULT_AVATAR });
                 const threadViewRef = ref(db, `threads/${key}/views`);
                 runTransaction(threadViewRef, (currentViews) => { return (currentViews || 0) + 1; });
-
                 document.getElementById('commentInput').value = '';
             } catch (error) { showError("Error al comentar."); }
         }
@@ -825,17 +825,14 @@ document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     changeSection('Publicaciones'); 
     
-    // --- LÓGICA DEL MENÚ DINÁMICO ---
     const savedUser = localStorage.getItem('savedRobloxUser');
     const menuLogin = document.getElementById('menuLogin');
     const menuLogout = document.getElementById('menuLogout');
 
     if (savedUser) {
-        // SI ESTÁ LOGUEADO: Ocultar login, Mostrar cerrar sesión
         if(menuLogin) menuLogin.style.display = 'none';
         if(menuLogout) menuLogout.style.display = 'block';
     } else {
-        // SI NO ESTÁ LOGUEADO: Mostrar login, Ocultar cerrar sesión
         if(menuLogin) menuLogin.style.display = 'block';
         if(menuLogout) menuLogout.style.display = 'none';
     }
@@ -844,12 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(btnNew) {
         btnNew.onclick = (e) => {
             e.preventDefault();
-            
-            if(!savedUser) {
-                showError("⚠️ <strong>Regístrate primero</strong><br>Para publicar, ve al Menú > Registrarse.");
-                return;
-            }
-
+            if(!savedUser) { showError("⚠️ Regístrate para publicar."); return; }
             const modal = document.getElementById('newThreadModalContent');
             if(modal) {
                 document.getElementById("menuDropdown").classList.remove('show');
@@ -865,11 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.onsubmit = async (e) => {
             e.preventDefault();
             const myUser = localStorage.getItem('savedRobloxUser');
-            if (!myUser) {
-                showError("⚠️ <strong>Acceso Denegado</strong><br>Debes iniciar sesión para publicar.");
-                closeModal('newThreadModalContent');
-                return;
-            }
+            if (!myUser) { showError("⚠️ Inicia sesión para publicar."); return; }
 
             const btn = document.getElementById('submitBtn');
             const originalText = btn.textContent;
@@ -894,9 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         formData.append('file', file);
                         formData.append('upload_preset', uploadPreset);
                         try {
-                            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
-                                method: 'POST', body: formData
-                            });
+                            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
                             const data = await res.json();
                             return data.secure_url;
                         } catch(err) { return null; }
@@ -919,7 +905,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 await push(threadsRef, newPost);
-                
                 form.reset();
                 document.getElementById('fileName').textContent = '';
                 if(modal) modal.style.display = 'none';
@@ -927,11 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.disabled = false;
                 document.getElementById('sectionInput').value = currentSection;
 
-            } catch (error) {
-                showError("Error: " + error.message);
-                btn.textContent = originalText;
-                btn.disabled = false;
-            }
+            } catch (error) { showError("Error: " + error.message); btn.textContent = originalText; btn.disabled = false; }
         };
     }
 });
