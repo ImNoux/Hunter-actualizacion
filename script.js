@@ -116,6 +116,7 @@ function initFirebaseListener() {
         });
     }
 }
+// --- PARTE 2: RENDERIZADO (Con botón SEGUIR y Nombre Clicable) ---
 function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
     const noThreadsMessage = document.getElementById('noThreadsMessage');
@@ -231,10 +232,24 @@ function renderThread(key, thread, container) {
 
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
+    // --- RECUPERAMOS EL BOTÓN PEQUEÑO ---
+    let followBtnHTML = '';
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (myUser && myUser !== authorName) {
+        const isFollowing = myFollowingList.includes(authorName);
+        const btnText = isFollowing ? 'SIGUIENDO' : 'SEGUIR';
+        const btnClass = isFollowing ? 'follow-btn following' : 'follow-btn';
+        // Nota: Este botón llama a toggleFollow directamente (sin abrir perfil)
+        followBtnHTML = `<button class="${btnClass}" onclick="toggleFollow('${authorName}')">${btnText}</button>`;
+    }
+
     div.innerHTML = `
         <div class="thread-date">${thread.displayDate}</div>
         <div style="margin-bottom: 5px; font-size: 0.9em; color: #aaa;">
-            ${rankBadge} <strong class="clickable-name" style="color: #fff;" onclick="openUserProfile('${authorName}')">${authorName}</strong> ${verifyBadge}
+            ${rankBadge} 
+            <strong class="clickable-name" style="color: #fff;" onclick="openUserProfile('${authorName}')">${authorName}</strong> 
+            ${verifyBadge}
+            ${followBtnHTML}
         </div>
         <h2>${thread.title}</h2>
         <p>${descriptionWithLinks}</p>
