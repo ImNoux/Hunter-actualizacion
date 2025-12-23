@@ -1,8 +1,8 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
-// Importamos 'increment' para los contadores
+// Importamos 'increment' que es vital para los contadores
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, runTransaction, get, child, set, increment, onChildAdded } from "https://esm.sh/firebase/database";
 
-// --- IMAGEN POR DEFECTO (Fantasmita) ---
+// --- IMAGEN POR DEFECTO ---
 const DEFAULT_AVATAR = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
 
 // --- CONFIGURACIÓN FIREBASE ---
@@ -30,7 +30,7 @@ let allThreadsData = [];
 let verifiedUsersList = []; 
 let myFollowingList = []; 
 let myAvatarUrl = ""; 
-let allUsersMap = {}; // AQUÍ guardaremos la info actualizada de todos
+let allUsersMap = {}; // Mapa para guardar info actual de usuarios
 
 // --- FUNCIONES DE AYUDA ---
 function showError(msg) {
@@ -83,15 +83,15 @@ function getUserId() {
 }
 
 function initFirebaseListener() {
-    // 1. CARGAR TODOS LOS USUARIOS (Para fotos en vivo)
+    // 1. CARGAR USUARIOS (Para fotos en vivo y menú)
     onValue(usersRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            allUsersMap = data; // Actualizamos el mapa de usuarios
+            allUsersMap = data; 
         } else {
             allUsersMap = {};
         }
-        // Si ya hay posts en pantalla, refrescamos para mostrar las fotos nuevas
+        // Si hay posts, refrescamos para que se vean las fotos nuevas
         if (allThreadsData.length > 0) {
             renderCurrentView();
         }
@@ -120,7 +120,7 @@ function initFirebaseListener() {
         renderCurrentView(); 
     });
 
-    // 4. Mis Datos (Avatar y Seguidos)
+    // 4. Mis Datos
     const myUser = localStorage.getItem('savedRobloxUser');
     if (myUser) {
         const myUserRef = ref(db, `users/${myUser}`);
@@ -136,6 +136,8 @@ function initFirebaseListener() {
         });
     }
 }
+// --- PARTE 2: RENDERIZADO (ESTILO TIKTOK) ---
+
 function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
     const noThreadsMessage = document.getElementById('noThreadsMessage');
@@ -251,18 +253,37 @@ function renderThread(key, thread, container) {
 
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
-    let followBtnHTML = '';
+    // --- LÓGICA DEL BOTÓN + Y MENÚ ---
     const myUser = localStorage.getItem('savedRobloxUser');
+    let avatarMenuHTML = '';
+    
+    // Solo mostramos el "+" si estoy logueado y NO soy yo mismo
     if (myUser && myUser !== authorName) {
         const isFollowing = myFollowingList.includes(authorName);
-        const btnText = isFollowing ? 'SIGUIENDO' : 'SEGUIR';
-        const btnClass = isFollowing ? 'follow-btn following' : 'follow-btn';
-        followBtnHTML = `<button class="${btnClass}" onclick="toggleFollow('${authorName}')">${btnText}</button>`;
+        
+        // Icono y texto cambian si ya sigues
+        const followIcon = isFollowing ? '<i class="fas fa-user-minus"></i>' : '<i class="fas fa-plus-circle"></i>';
+        const followText = isFollowing ? 'Dejar de seguir' : 'Seguir';
+        
+        // HTML del botón + y el menú oculto
+        avatarMenuHTML = `
+            <div class="plus-badge" onclick="toggleMiniMenu(event, 'menu-${key}')">
+                <i class="fas fa-plus"></i>
+            </div>
+            
+            <div id="menu-${key}" class="mini-menu-dropdown">
+                <div class="mini-menu-item" onclick="openUserProfile('${authorName}')">
+                    Ir al perfil <i class="far fa-user"></i>
+                </div>
+                <div class="mini-menu-item" onclick="toggleFollow('${authorName}')">
+                    ${followText} ${followIcon}
+                </div>
+            </div>
+        `;
     }
 
-    // --- FOTO "EN VIVO" EN EL POST ---
+    // Avatar Actualizado
     let currentAvatar = DEFAULT_AVATAR;
-    // Buscamos en el mapa actualizado. Si no está, usamos la del post o la default.
     if (allUsersMap[authorName] && allUsersMap[authorName].avatar) {
         currentAvatar = allUsersMap[authorName].avatar;
     } else if (thread.authorAvatar) {
@@ -273,14 +294,15 @@ function renderThread(key, thread, container) {
         <div class="thread-date">${thread.displayDate}</div>
         
         <div class="post-header">
-            <img src="${currentAvatar}" class="user-avatar-small" alt="Avatar" onclick="openUserProfile('${authorName}')" style="cursor:pointer;">
+            <div class="avatar-wrapper">
+                <img src="${currentAvatar}" class="user-avatar-small" alt="Avatar" onclick="openUserProfile('${authorName}')">
+                ${avatarMenuHTML} </div>
             
             <div class="post-header-info">
                 <div style="font-size: 0.9em; color: #aaa;">
                     ${rankBadge} 
                     <strong class="clickable-name" style="color: #fff;" onclick="openUserProfile('${authorName}')">${authorName}</strong> 
                     ${verifyBadge}
-                    ${followBtnHTML}
                 </div>
             </div>
         </div>
@@ -328,9 +350,35 @@ function renderThread(key, thread, container) {
 }
 // --- PARTE 3: ACCIONES Y LÓGICA ---
 
-// 1. ABRIR PERFIL
+// --- NUEVO: FUNCIÓN PARA EL MENÚ FLOTANTE (+) ---
+window.toggleMiniMenu = function(event, menuId) {
+    event.stopPropagation(); // Evita que el click se propague y cierre el menú inmediatamente
+    
+    // 1. Cerrar todos los otros menús abiertos primero
+    document.querySelectorAll('.mini-menu-dropdown').forEach(m => {
+        if(m.id !== menuId) m.classList.remove('show');
+    });
+
+    // 2. Abrir/Cerrar el seleccionado
+    const menu = document.getElementById(menuId);
+    if(menu) {
+        menu.classList.toggle('show');
+    }
+};
+
+// CERRAR MENÚS AL TOCAR EN CUALQUIER OTRO LADO
+document.addEventListener('click', function() {
+    document.querySelectorAll('.mini-menu-dropdown').forEach(m => {
+        m.classList.remove('show');
+    });
+});
+
+// 1. ABRIR PERFIL GRANDE
 window.openUserProfile = function(targetUser) {
     if(!targetUser) return;
+
+    // Cerrar cualquier mini-menú que haya quedado abierto
+    document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
 
     const elements = {
         name: document.getElementById('profileModalName'),
@@ -348,7 +396,8 @@ window.openUserProfile = function(targetUser) {
     if(elements.name) elements.name.textContent = targetUser;
     if(elements.rank) elements.rank.textContent = "Cargando...";
     if(elements.followers) elements.followers.textContent = "-";
-    // Ponemos la foto actual del mapa global, o la default
+    
+    // Cargar foto actual
     if(elements.img) {
         if(allUsersMap[targetUser] && allUsersMap[targetUser].avatar) {
             elements.img.src = allUsersMap[targetUser].avatar;
@@ -370,7 +419,6 @@ window.openUserProfile = function(targetUser) {
         if(elements.followers) elements.followers.textContent = formatCount(data.followersCount || 0);
         if(elements.following) elements.following.textContent = formatCount(data.followingCount || 0);
         
-        // Listener directo por si cambia mientras vemos el perfil
         if(elements.img) elements.img.src = data.avatar || DEFAULT_AVATAR;
 
         let posts = 0;
@@ -483,6 +531,10 @@ window.toggleFollow = function(targetUser) {
         showError("No puedes seguirte a ti mismo.");
         return;
     }
+    
+    // Cerrar cualquier mini-menú al seguir
+    document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
+
     if (typeof increment === 'undefined') {
         alert("Error: Falta 'increment' en imports.");
         return;
@@ -574,7 +626,6 @@ window.openComments = function(key) {
                 const isVerified = verifiedUsersList.includes(authorName.toLowerCase());
                 const badge = isVerified ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
                 
-                // Avatar en vivo en comentarios también
                 let avatar = DEFAULT_AVATAR;
                 if(allUsersMap[authorName] && allUsersMap[authorName].avatar) {
                     avatar = allUsersMap[authorName].avatar;
