@@ -136,7 +136,7 @@ function initFirebaseListener() {
         });
     }
 }
-// --- PARTE 2: RENDERIZADO (ESTILO TIKTOK) ---
+// --- PARTE 2: RENDERIZADO (El + desaparece si ya sigues) ---
 
 function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
@@ -253,33 +253,33 @@ function renderThread(key, thread, container) {
 
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
-    // --- LÓGICA DEL BOTÓN + Y MENÚ ---
+    // --- LÓGICA DEL BOTÓN + (MODIFICADA) ---
     const myUser = localStorage.getItem('savedRobloxUser');
     let avatarMenuHTML = '';
     
-    // Solo mostramos el "+" si estoy logueado y NO soy yo mismo
+    // Solo mostramos el "+" si NO soy yo Y si NO lo estoy siguiendo
     if (myUser && myUser !== authorName) {
         const isFollowing = myFollowingList.includes(authorName);
         
-        // Icono y texto cambian si ya sigues
-        const followIcon = isFollowing ? '<i class="fas fa-user-minus"></i>' : '<i class="fas fa-plus-circle"></i>';
-        const followText = isFollowing ? 'Dejar de seguir' : 'Seguir';
-        
-        // HTML del botón + y el menú oculto
-        avatarMenuHTML = `
-            <div class="plus-badge" onclick="toggleMiniMenu(event, 'menu-${key}')">
-                <i class="fas fa-plus"></i>
-            </div>
-            
-            <div id="menu-${key}" class="mini-menu-dropdown">
-                <div class="mini-menu-item" onclick="openUserProfile('${authorName}')">
-                    Ir al perfil <i class="far fa-user"></i>
+        // ¡AQUÍ ESTÁ EL CAMBIO!
+        // Si NO lo sigues (!isFollowing), mostramos el badge.
+        // Si YA lo sigues, avatarMenuHTML se queda vacío (el badge desaparece).
+        if (!isFollowing) {
+            avatarMenuHTML = `
+                <div class="plus-badge" onclick="toggleMiniMenu(event, 'menu-${key}')">
+                    <i class="fas fa-plus"></i>
                 </div>
-                <div class="mini-menu-item" onclick="toggleFollow('${authorName}')">
-                    ${followText} ${followIcon}
+                
+                <div id="menu-${key}" class="mini-menu-dropdown">
+                    <div class="mini-menu-item" onclick="openUserProfile('${authorName}')">
+                        Ir al perfil <i class="far fa-user"></i>
+                    </div>
+                    <div class="mini-menu-item" onclick="toggleFollow('${authorName}')">
+                        Seguir <i class="fas fa-plus-circle"></i>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     }
 
     // Avatar Actualizado
