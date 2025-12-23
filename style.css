@@ -225,20 +225,31 @@ footer p { margin: 5px 0; }
     cursor: pointer; margin-top: 10px; transition: all 0.2s ease;
 }
 #customAlertModal button:hover { background-color: #ff0000; color: #fff; transform: scale(1.05); box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
-/* FOTO DE PERFIL PEQUEÑA (En Posts y Comentarios) */
-.user-avatar-small {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #333;
-    margin-right: 10px;
-    vertical-align: middle;
+/* --- ESTILO PARA LA FOTO EN LAS PUBLICACIONES --- */
+
+/* Contenedor del encabezado (Foto + Nombre) */
+.post-header {
+    display: flex;             /* Pone la foto al lado del texto */
+    align-items: center;       /* Centra verticalmente */
+    margin-bottom: 10px;       /* Espacio debajo */
+    width: 100%;
 }
 
-/* Ajuste para el encabezado del post */
-.post-header {
+/* La foto pequeña */
+.user-avatar-small {
+    width: 45px;               /* Tamaño fijo */
+    height: 45px;              /* Tamaño fijo */
+    border-radius: 50%;        /* Redonda */
+    object-fit: cover;         /* Que no se deforme */
+    border: 2px solid #00a2ff; /* Borde azul bonito */
+    margin-right: 12px;        /* Separación con el nombre */
+    background-color: #000;    /* Fondo negro por si es transparente */
+}
+
+/* Ajuste para el texto del nombre */
+.post-header-info {
+    flex: 1;                   /* Ocupa el resto del espacio */
     display: flex;
-    align-items: center;
-    margin-bottom: 8px;
+    flex-direction: column;    /* Nombre arriba, fecha/rango abajo si quieres */
+    justify-content: center;
 }
