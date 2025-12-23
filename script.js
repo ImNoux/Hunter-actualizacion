@@ -215,6 +215,7 @@ function renderFullProfile(container) {
     const displayName = userData.displayName || targetUser; 
     const status = userData.status || ""; 
     const bio = userData.bio || "";
+    // Verificamos si tiene PIN
     const hasPin = userData.pin ? true : false;
     
     const followers = formatCount(userData.followersCount || 0);
@@ -248,6 +249,7 @@ function renderFullProfile(container) {
         plusBtnAction = `onclick="document.getElementById('avatarUpload').click()"`;
         nameAction = `onclick="editMyName()"`;
 
+        // Alerta para usuarios antiguos sin PIN
         if (!hasPin) {
             pinWarningHTML = `
                 <div style="background: rgba(255, 165, 0, 0.15); border: 1px solid orange; padding: 10px; border-radius: 6px; margin: 15px 0; text-align: center;">
@@ -387,7 +389,8 @@ function renderThread(key, thread, container) {
     const authorName = thread.username || 'Usuario';
     const isVerifiedAuto = verifiedUsersList.includes(authorName.toLowerCase());
     const verifyBadge = (isVerifiedAuto || thread.verificado) 
-        ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
+        ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' 
+        : '';
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
     const myUser = localStorage.getItem('savedRobloxUser');
@@ -460,11 +463,13 @@ window.goToHome = function() {
     searchTerm = ''; 
     const searchInput = document.getElementById('searchInput');
     if(searchInput) searchInput.value = '';
+
     currentSection = 'Publicaciones';
     document.querySelectorAll('.tab-btn').forEach(btn => {
         if(btn.textContent.trim() === 'Publicaciones') btn.classList.add('active');
         else btn.classList.remove('active');
     });
+
     renderCurrentView();
     window.scrollTo(0, 0);
 };
@@ -559,7 +564,7 @@ window.openFullProfile = function(username) {
     }
 
     if(!username) {
-        showError("⚠️ <strong>Acción Bloqueada</strong><br>Debes iniciar sesión o registrarte para ver perfiles.");
+        showError("⚠️ <strong>No estás identificado.</strong><br><br>Para ver tu perfil, ve al Menú > <strong>Iniciar Sesión</strong>.");
         const menu = document.getElementById("menuDropdown");
         if(menu) menu.classList.remove('show');
         return;
@@ -635,16 +640,9 @@ document.addEventListener('click', function() {
     document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
 });
 
-// --- SEGUIR USUARIOS (BLOQUEO SI NO ESTÁ LOGUEADO) ---
 window.toggleFollow = function(targetUser) {
     const myUser = localStorage.getItem('savedRobloxUser');
-    
-    // BLOQUEO DE SEGURIDAD
-    if(!myUser) { 
-        showError("⚠️ <strong>Regístrate primero</strong><br>Debes iniciar sesión para seguir a otros usuarios."); 
-        return; 
-    }
-    
+    if(!myUser) { showError("Regístrate primero."); return; }
     if(myUser === targetUser) { showError("No puedes seguirte a ti mismo."); return; }
     
     document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
@@ -702,16 +700,13 @@ if(avatarInput) {
     };
 }
 
-// --- LIKES (BLOQUEO SI NO ESTÁ LOGUEADO) ---
 window.toggleLike = function(key, currentCount, btn) {
-    // 1. VERIFICAR SESIÓN
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) {
-        showError("⚠️ <strong>Acción no permitida</strong><br>Debes iniciar sesión o registrarte para dar 'Me gusta'.");
-        return; // DETIENE LA FUNCIÓN
+        showError("⚠️ <strong>Acción no permitida</strong><br>Debes iniciar sesión para dar 'Me gusta'.");
+        return; 
     }
 
-    // 2. SI ESTÁ LOGUEADO, CONTINÚA
     const userId = getUserId();
     const liked = btn.classList.contains('liked');
     const newCount = liked ? currentCount - 1 : currentCount + 1;
@@ -745,11 +740,9 @@ async function checkUsernameAvailability(username) {
     return true; 
 }
 
-// --- COMENTARIOS (CON SEGURIDAD) ---
+// --- COMENTARIOS (CON LÓGICA DE VISTAS AL COMENTAR) ---
 window.openComments = function(key) {
-    const threadViewRef = ref(db, `threads/${key}/views`);
-    runTransaction(threadViewRef, (currentViews) => { return (currentViews || 0) + 1; });
-
+    // YA NO SUBIMOS VISTAS AQUÍ. SOLO ABRIMOS MODAL.
     const modal = document.getElementById('commentsModal');
     const list = document.getElementById('commentsList');
     list.innerHTML = '<p style="text-align:center;">Cargando...</p>';
@@ -758,13 +751,11 @@ window.openComments = function(key) {
     const usernameInput = document.getElementById('usernameInput');
     const savedUser = localStorage.getItem('savedRobloxUser');
     
-    // Si hay usuario, llenamos el campo
     if(savedUser && usernameInput) {
         usernameInput.value = savedUser;
         usernameInput.disabled = true;
         usernameInput.style.backgroundColor = '#252525';
     } else if(usernameInput) {
-        // Si no hay usuario, lo dejamos vacío pero bloqueamos el envío después
         usernameInput.value = "";
         usernameInput.placeholder = "Inicia sesión para comentar";
         usernameInput.disabled = true; 
@@ -804,7 +795,6 @@ window.openComments = function(key) {
         cForm.onsubmit = async (e) => {
             e.preventDefault();
             
-            // SEGURIDAD EN COMENTARIOS
             const myUser = localStorage.getItem('savedRobloxUser');
             if(!myUser) {
                 showError("⚠️ <strong>Acción Bloqueada</strong><br>Regístrate o inicia sesión para comentar.");
@@ -813,9 +803,15 @@ window.openComments = function(key) {
 
             try {
                 const txt = document.getElementById('commentInput').value;
-                const usr = myUser; // Usamos el usuario real
+                const usr = myUser;
                 
+                // 1. PUBLICAR EL COMENTARIO
                 await push(commentsRef, { text: txt, username: usr, timestamp: Date.now(), authorAvatar: myAvatarUrl || DEFAULT_AVATAR });
+                
+                // 2. ¡AQUÍ SUBIMOS LA VISTA! (SOLO SI COMENTA)
+                const threadViewRef = ref(db, `threads/${key}/views`);
+                runTransaction(threadViewRef, (currentViews) => { return (currentViews || 0) + 1; });
+
                 document.getElementById('commentInput').value = '';
             } catch (error) { showError("Error al comentar."); }
         }
