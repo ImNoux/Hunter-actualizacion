@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comunidad ARC</title>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,86 +13,78 @@
     <header>
         <div class="header-top">
             <div class="menu-container">
-                <button class="menu-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i> Menú</button>
+                <button class="menu-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
                 <div id="menuDropdown" class="menu-dropdown">
-                    <a href="#" onclick="openFullProfile()">👤 Mi Perfil</a>
-                    
                     <a id="menuLogin" href="#" onclick="openModal('loginModal')">🔑 Iniciar Sesión</a>
                     <a id="menuLogout" href="#" onclick="logoutSystem()" style="display: none; color: #ff4d4d;">🚪 Cerrar Sesión</a>
-                    
                     <a href="#" onclick="openModal('updatesModal')">Actualizaciones</a>
                     <a href="#" onclick="openModal('contactModal')">Contactos</a>
                 </div>
             </div>
-
-            <h1 onclick="goToHome()">COMUNIDAD ARC</h1>
-
-            <div id="newThreadButtonContainer">
-                <button id="newThreadButton">+ Nuevo</button>
-            </div>
-        </div>
-
-        <nav class="nav-tabs">
-            <button class="tab-btn active" onclick="changeSection('Publicaciones')">Publicaciones</button>
-            <button class="tab-btn" onclick="changeSection('Busqueda')">Usuarios</button>
-        </nav>
+            <h1 onclick="changeSection('Home')">COMUNIDAD ARC</h1>
+            <div style="width: 40px;"></div> </div>
     </header>
 
-    <input type="text" id="searchInput" placeholder="Buscar post, nombre o @usuario...">
+    <div id="searchContainer" style="display:none; padding: 10px 20px;">
+        <input type="text" id="searchInput" placeholder="Buscar usuarios, posts, etiquetas...">
+    </div>
 
     <main>
         <div class="thread-container">
-            <p id="noThreadsMessage">Cargando contenido...</p>
+            <p id="noThreadsMessage">Cargando...</p>
         </div>
         <div id="pagination-container"></div>
     </main>
 
-    <footer>
-        <p>ARC_CLXN &copy; 2025. Todos los derechos reservados.</p>
-    </footer>
+    <nav class="bottom-navbar">
+        <div class="nav-item active" onclick="changeSection('Home')" id="nav-home">
+            <i class="fas fa-home"></i>
+        </div>
+        <div class="nav-item" onclick="changeSection('Busqueda')" id="nav-search">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="nav-item plus-btn-container" onclick="openModal('newThreadModalContent')">
+            <div class="plus-btn"><i class="fas fa-plus"></i></div>
+        </div>
+        <div class="nav-item" onclick="changeSection('Activity')" id="nav-activity">
+            <i class="far fa-heart"></i>
+        </div>
+        <div class="nav-item" onclick="openFullProfile()" id="nav-profile">
+            <i class="far fa-user"></i>
+        </div>
+    </nav>
 
     <div class="modal-content" id="newThreadModalContent">
         <span class="close-button" onclick="closeModal('newThreadModalContent')">&times;</span>
         <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">Crear Publicación</h2>
         <form id="newThreadForm">
             <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
-            
             <div class="form-group">
-                <label for="categorySelect">Rango:</label>
+                <label>Categoría:</label>
                 <select id="categorySelect" required>
                     <option value="" disabled selected>-- Selecciona --</option>
                     <option value="Hunter">Hunter</option>
                     <option value="Creator">Creator</option>
                     <option value="Elite">Elite</option>
-                    <option value="Designer">Designer</option>
                     <option value="Top Model">Top Model</option>
                     <option value="Mentor">Mentor</option>
                     <option value="Cheerleader">Cheerleader</option>
                     <option value="Moon & Sun">Moon & Sun</option>
+                    <option value="Publicaciones">General</option>
                 </select>
             </div>
-
-            <div class="form-group">
-                <label for="robloxUser">Usuario Roblox:</label>
-                <input type="text" id="robloxUser" name="robloxUser" placeholder="Inicia sesión primero" required autocomplete="off" disabled style="background-color: #252525; cursor: not-allowed;">
+            <div class="form-group" style="display:none;">
+                <input type="text" id="robloxUser" name="robloxUser">
             </div>
-
             <div class="form-group">
-                <label for="title">Título del Post:</label>
-                <input type="text" id="title" name="title" placeholder="Ej: Busco equipo..." required autocomplete="off">
+                <input type="text" id="title" placeholder="Título..." required autocomplete="off">
             </div>
-
             <div class="form-group">
-                <label for="description">Descripción:</label>
-                <textarea id="description" name="description" placeholder="Escribe los detalles..." required rows="4"></textarea>
+                <textarea id="description" placeholder="¿Qué estás pensando?" required rows="4"></textarea>
             </div>
-
-            <label for="imageFile" class="upload-btn-gray">
-                <i class="fas fa-images"></i> Multimedia (Varios)
-            </label>
+            <label for="imageFile" class="upload-btn-gray"><i class="fas fa-images"></i> Foto/Video</label>
             <input type="file" id="imageFile" accept="image/*, video/*" multiple style="display:none;">
             <p id="fileName" class="file-name-display"></p>
-
             <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
         </form>
     </div>
@@ -102,11 +92,10 @@
     <div id="commentsModal" class="modal-overlay">
         <div class="comments-content">
             <span class="close-button" onclick="closeModal('commentsModal')">&times;</span>
-            <h3 id="commentsTitle">Comentarios</h3>
-            <div id="commentsList"><p style="text-align:center;">Cargando...</p></div>
+            <h3>Comentarios</h3>
+            <div id="commentsList"></div>
             <form id="commentForm">
-                <input type="text" id="usernameInput" placeholder="User" required autocomplete="off" maxlength="15">
-                <input type="text" id="commentInput" placeholder="..." required autocomplete="off">
+                <input type="text" id="commentInput" placeholder="Escribe un comentario..." required autocomplete="off">
                 <button type="submit"><i class="fas fa-paper-plane"></i></button>
             </form>
         </div>
@@ -114,119 +103,52 @@
 
     <div class="modal-content" id="loginModal">
         <span class="close-button" onclick="closeModal('loginModal')">&times;</span>
-        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">Iniciar Sesión</h2>
-        <div class="form-group">
-            <label>Usuario:</label>
-            <input type="text" id="loginUser" placeholder="Tu usuario exacto" required autocomplete="off">
-        </div>
-        <div class="form-group">
-            <label>PIN (Clave):</label>
-            <input type="password" id="loginPin" placeholder="****" maxlength="4">
-        </div>
-        <button onclick="loginSystem()" class="publish-btn" style="background-color: #00a2ff; margin-top:10px;">ENTRAR</button>
-        <p style="text-align:center; margin-top:20px; font-size:0.9em; color:#aaa;">
-            ¿No tienes cuenta? <a href="#" onclick="closeModal('loginModal'); openModal('registerModal')" style="color:#00a2ff; font-weight:bold;">Regístrate aquí</a>
-        </p>
+        <h2 style="text-align:center;">Iniciar Sesión</h2>
+        <div class="form-group"><input type="text" id="loginUser" placeholder="Usuario"></div>
+        <div class="form-group"><input type="password" id="loginPin" placeholder="PIN"></div>
+        <button onclick="loginSystem()" class="publish-btn">ENTRAR</button>
+        <p style="text-align:center; margin-top:15px; font-size:0.9em;"><a href="#" onclick="closeModal('loginModal'); openModal('registerModal')" style="color:#00a2ff;">Crear cuenta</a></p>
     </div>
 
     <div class="modal-content" id="registerModal">
         <span class="close-button" onclick="closeModal('registerModal')">&times;</span>
-        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">Crear Cuenta Nueva</h2>
-        <div class="form-group">
-            <label>Crear Usuario:</label>
-            <input type="text" id="regUser" placeholder="Elige un usuario único" required autocomplete="off">
-        </div>
-        <div class="form-group">
-            <label>Crear PIN (4 dígitos):</label>
-            <input type="text" id="regPin" placeholder="Ej: 1234" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-        </div>
-        <button onclick="registerSystem()" class="publish-btn" style="background-color: #2b2d31; border: 1px solid #00a2ff; color: #00a2ff; margin-top:10px;">CREAR CUENTA</button>
-        <p style="text-align:center; margin-top:20px; font-size:0.9em; color:#aaa;">
-            ¿Ya tienes cuenta? <a href="#" onclick="closeModal('registerModal'); openModal('loginModal')" style="color:#00a2ff;">Inicia sesión</a>
-        </p>
+        <h2 style="text-align:center;">Registro</h2>
+        <div class="form-group"><input type="text" id="regUser" placeholder="Usuario nuevo"></div>
+        <div class="form-group"><input type="text" id="regPin" placeholder="Crea un PIN (4 dígitos)" maxlength="4"></div>
+        <button onclick="registerSystem()" class="publish-btn">REGISTRARSE</button>
     </div>
 
-    <div class="modal-content" id="editProfileModal" style="max-width: 350px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <span onclick="closeModal('editProfileModal')" style="cursor:pointer; font-size:1.2em;">✕</span>
-            <h3 style="margin:0; font-size:1.1em;">Editar perfil</h3>
-            <span onclick="saveProfileChanges()" id="saveProfileBtn" style="cursor:pointer; color:#00a2ff; font-weight:bold;">Listo</span>
+    <div class="modal-content" id="editProfileModal">
+        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+            <span onclick="closeModal('editProfileModal')" style="cursor:pointer;">✕</span>
+            <h3>Editar perfil</h3>
+            <span onclick="saveProfileChanges()" id="saveProfileBtn" style="color:#00a2ff; cursor:pointer; font-weight:bold;">Listo</span>
         </div>
-
         <div style="text-align:center; margin-bottom:20px;">
-            <div style="position:relative; display:inline-block;">
-                <img id="editAvatarPreview" src="" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #333;">
-                <div onclick="document.getElementById('avatarUpload').click()" style="position:absolute; bottom:0; right:0; background:#00a2ff; color:white; border-radius:50%; width:25px; height:25px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.8em;">
-                    <i class="fas fa-camera"></i>
-                </div>
-            </div>
-            <p style="color:#00a2ff; font-size:0.9em; margin-top:10px; cursor:pointer;" onclick="document.getElementById('avatarUpload').click()">Editar foto o avatar</p>
+            <img id="editAvatarPreview" src="" style="width:80px; height:80px; border-radius:50%;">
+            <p onclick="document.getElementById('avatarUpload').click()" style="color:#00a2ff; font-size:0.9em; cursor:pointer; margin-top:5px;">Cambiar foto</p>
         </div>
-
-        <div class="edit-group">
-            <label>Nombre</label>
-            <input type="text" id="editNameInput" placeholder="Tu nombre visible">
-            <p class="limit-info">Se puede cambiar cada 7 días.</p>
-        </div>
-
-        <div class="edit-group">
-            <label>Nombre de usuario</label>
-            <input type="text" id="editHandleInput" placeholder="Ej: kiuxt">
-            <p class="limit-info">Se puede cambiar cada 15 días.</p>
-        </div>
-
-        <div class="edit-group">
-            <label>Presentación</label>
-            <textarea id="editBioInput" rows="2" placeholder="Cuéntanos algo..."></textarea>
-        </div>
-
-        <div class="edit-group">
-            <label>Nota de Estado</label>
-            <input type="text" id="editStatusInput" placeholder="¿Qué piensas hoy?" maxlength="30">
-        </div>
-    </div>
-
-    <div id="updatesModal" class="modal-overlay">
-        <div class="info-content">
-            <span class="close-button" onclick="closeModal('updatesModal')">&times;</span>
-            <h2>Actualizaciones</h2>
-            <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #ccc; line-height: 1.6;">
-                <li>Nuevo Perfil</li>
-                <li>Buscador Mejorado</li>
-                <li>Sistema de Alertas</li>
-            </ul>
-        </div>
-    </div>
-
-    <div id="contactModal" class="modal-overlay">
-        <div class="info-content">
-            <span class="close-button" onclick="closeModal('contactModal')">&times;</span>
-            <h2>Contacto</h2>
-            <p>Síguenos en Instagram:</p>
-            <div style="margin-top: 20px; font-size: 1.2em;">
-                <i class="fab fa-instagram" style="color: #E1306C;"></i>
-                <a href="https://instagram.com/arc_clxn" target="_blank" style="color: #00a2ff; text-decoration: none; font-weight: bold; margin-left: 5px;">arc_clxn</a>
-            </div>
-        </div>
+        <div class="edit-group"><label>Nombre</label><input type="text" id="editNameInput"></div>
+        <div class="edit-group"><label>Usuario</label><input type="text" id="editHandleInput"></div>
+        <div class="edit-group"><label>Bio</label><textarea id="editBioInput"></textarea></div>
+        <div class="edit-group"><label>Estado</label><input type="text" id="editStatusInput"></div>
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
-
+    
     <div id="confirmModal" class="modal-overlay" style="z-index: 5000;">
         <div class="info-content" style="max-width: 300px; padding: 20px;">
-            <h3 style="border:none; margin-bottom: 10px;">¿Estás seguro?</h3>
-            <p id="confirmText" style="margin-bottom: 20px;">¿Confirmas esta acción?</p>
+            <h3>Cerrar Sesión</h3>
+            <p id="confirmText">¿Salir de la cuenta?</p>
             <div style="display:flex; justify-content:center; gap:10px;">
-                <button onclick="closeModal('confirmModal')" style="background:#333; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">Cancelar</button>
-                <button id="confirmActionBtn" style="background:#ff4d4d; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">Sí, seguro</button>
+                <button onclick="closeModal('confirmModal')" style="background:#333; color:white; border:none; padding:8px 20px; border-radius:4px;">No</button>
+                <button id="confirmActionBtn" style="background:#ff4d4d; color:white; border:none; padding:8px 20px; border-radius:4px;">Sí</button>
             </div>
         </div>
     </div>
 
-    <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
-    
+    <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
     <script type="module" src="script.js"></script>
-    
     <script>
         function toggleMenu() { document.getElementById("menuDropdown").classList.toggle("show"); }
         window.closeModal = (id) => document.getElementById(id).style.display = 'none';
@@ -236,8 +158,8 @@
         }
         document.getElementById('imageFile').onchange = function() {
             if(this.files && this.files.length > 0) {
-                document.getElementById('fileName').textContent = this.files.length === 1 ? (this.files[0].name.substring(0,25) + "...") : `${this.files.length} archivos`;
-            } else { document.getElementById('fileName').textContent = ""; }
+                document.getElementById('fileName').textContent = `${this.files.length} archivos`;
+            }
         };
         window.toggleMenu = toggleMenu;
     </script>
