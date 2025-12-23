@@ -83,12 +83,14 @@ function getUserId() {
 }
 
 function initFirebaseListener() {
+    // 1. Usuarios
     onValue(usersRef, (snapshot) => {
         const data = snapshot.val();
         if (data) { allUsersMap = data; } else { allUsersMap = {}; }
         if (allThreadsData.length > 0) renderCurrentView();
     });
 
+    // 2. Posts
     const getThreads = query(threadsRef, orderByChild('timestamp'));
     onValue(getThreads, (snapshot) => {
         const data = snapshot.val();
@@ -98,6 +100,7 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 
+    // 3. Verificados
     onValue(verifiedRef, (snapshot) => {
         const data = snapshot.val();
         if (data) { verifiedUsersList = Object.keys(data).map(name => name.toLowerCase()); } 
@@ -105,6 +108,7 @@ function initFirebaseListener() {
         renderCurrentView(); 
     });
 
+    // 4. Mis Datos
     const myUser = localStorage.getItem('savedRobloxUser');
     if (myUser) {
         const myUserRef = ref(db, `users/${myUser}`);
@@ -142,6 +146,7 @@ function renderCurrentView() {
         return;
     }
 
+    // LISTA DE POSTS
     let filtered = allThreadsData.filter(([key, thread]) => {
         let postSection = thread.section; 
         let postCategory = thread.category;
@@ -201,7 +206,7 @@ function renderUserSearch(container) {
     });
 }
 
-// --- RENDERIZAR PERFIL COMPLETO (FINAL) ---
+// --- RENDERIZAR PERFIL COMPLETO (DISEÑO FINAL) ---
 function renderFullProfile(container) {
     const targetUser = viewingUserProfile;
     const userData = allUsersMap[targetUser] || {};
@@ -382,8 +387,7 @@ function renderThread(key, thread, container) {
     const authorName = thread.username || 'Usuario';
     const isVerifiedAuto = verifiedUsersList.includes(authorName.toLowerCase());
     const verifyBadge = (isVerifiedAuto || thread.verificado) 
-        ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' 
-        : '';
+        ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
     const myUser = localStorage.getItem('savedRobloxUser');
@@ -476,7 +480,6 @@ window.loginSystem = async function() {
         const snapshot = await get(child(usersRef, user));
         if (snapshot.exists()) {
             const data = snapshot.val();
-            // Verificar PIN
             if (data.pin == pin) { 
                 localStorage.setItem('savedRobloxUser', user);
                 localStorage.setItem('userId', 'restored_' + user);
@@ -495,7 +498,7 @@ window.loginSystem = async function() {
     }
 };
 
-// --- B. SISTEMA DE REGISTRO (CREAR CUENTA NUEVA) ---
+// --- B. SISTEMA DE REGISTRO (CREAR CUENTA) ---
 window.registerSystem = async function() {
     const user = document.getElementById('regUser').value.trim();
     const pin = document.getElementById('regPin').value.trim();
@@ -506,7 +509,6 @@ window.registerSystem = async function() {
     try {
         const snapshot = await get(child(usersRef, user));
         if (snapshot.exists()) {
-            // AQUÍ AVISA QUE EL USUARIO ESTÁ EN USO
             alert(`⚠️ El usuario "${user}" YA EXISTE.\nUsa el botón 'ENTRAR' si es tuyo.`);
         } else {
             await set(child(usersRef, user), { 
@@ -557,7 +559,7 @@ window.openFullProfile = function(username) {
     }
 
     if(!username) {
-        showError("⚠️ <strong>No estás identificado.</strong><br><br>Para ver tu perfil, ve al Menú > <strong>Iniciar Sesión</strong>.");
+        showError("⚠️ <strong>Acción Bloqueada</strong><br>Debes iniciar sesión o registrarte para ver perfiles.");
         const menu = document.getElementById("menuDropdown");
         if(menu) menu.classList.remove('show');
         return;
@@ -633,9 +635,16 @@ document.addEventListener('click', function() {
     document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
 });
 
+// --- SEGUIR USUARIOS (BLOQUEO SI NO ESTÁ LOGUEADO) ---
 window.toggleFollow = function(targetUser) {
     const myUser = localStorage.getItem('savedRobloxUser');
-    if(!myUser) { showError("Regístrate primero."); return; }
+    
+    // BLOQUEO DE SEGURIDAD
+    if(!myUser) { 
+        showError("⚠️ <strong>Regístrate primero</strong><br>Debes iniciar sesión para seguir a otros usuarios."); 
+        return; 
+    }
+    
     if(myUser === targetUser) { showError("No puedes seguirte a ti mismo."); return; }
     
     document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
@@ -693,7 +702,16 @@ if(avatarInput) {
     };
 }
 
+// --- LIKES (BLOQUEO SI NO ESTÁ LOGUEADO) ---
 window.toggleLike = function(key, currentCount, btn) {
+    // 1. VERIFICAR SESIÓN
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) {
+        showError("⚠️ <strong>Acción no permitida</strong><br>Debes iniciar sesión o registrarte para dar 'Me gusta'.");
+        return; // DETIENE LA FUNCIÓN
+    }
+
+    // 2. SI ESTÁ LOGUEADO, CONTINÚA
     const userId = getUserId();
     const liked = btn.classList.contains('liked');
     const newCount = liked ? currentCount - 1 : currentCount + 1;
@@ -727,6 +745,7 @@ async function checkUsernameAvailability(username) {
     return true; 
 }
 
+// --- COMENTARIOS (CON SEGURIDAD) ---
 window.openComments = function(key) {
     const threadViewRef = ref(db, `threads/${key}/views`);
     runTransaction(threadViewRef, (currentViews) => { return (currentViews || 0) + 1; });
@@ -738,10 +757,17 @@ window.openComments = function(key) {
 
     const usernameInput = document.getElementById('usernameInput');
     const savedUser = localStorage.getItem('savedRobloxUser');
+    
+    // Si hay usuario, llenamos el campo
     if(savedUser && usernameInput) {
         usernameInput.value = savedUser;
         usernameInput.disabled = true;
         usernameInput.style.backgroundColor = '#252525';
+    } else if(usernameInput) {
+        // Si no hay usuario, lo dejamos vacío pero bloqueamos el envío después
+        usernameInput.value = "";
+        usernameInput.placeholder = "Inicia sesión para comentar";
+        usernameInput.disabled = true; 
     }
 
     const commentsRef = ref(db, `threads/${key}/comments`);
@@ -777,18 +803,18 @@ window.openComments = function(key) {
     if(cForm) {
         cForm.onsubmit = async (e) => {
             e.preventDefault();
+            
+            // SEGURIDAD EN COMENTARIOS
+            const myUser = localStorage.getItem('savedRobloxUser');
+            if(!myUser) {
+                showError("⚠️ <strong>Acción Bloqueada</strong><br>Regístrate o inicia sesión para comentar.");
+                return;
+            }
+
             try {
                 const txt = document.getElementById('commentInput').value;
-                const usr = document.getElementById('usernameInput').value || 'Anónimo';
-                if (usr !== 'Anónimo') {
-                    const isAvailable = await checkUsernameAvailability(usr);
-                    if (!isAvailable) { showError(`Usuario ocupado.`); return; }
-                }
-                if(!localStorage.getItem('savedRobloxUser') && usr !== 'Anónimo') {
-                    localStorage.setItem('savedRobloxUser', usr);
-                    const uInput = document.getElementById('usernameInput');
-                    if(uInput) { uInput.disabled=true; uInput.style.backgroundColor='#252525'; }
-                }
+                const usr = myUser; // Usamos el usuario real
+                
                 await push(commentsRef, { text: txt, username: usr, timestamp: Date.now(), authorAvatar: myAvatarUrl || DEFAULT_AVATAR });
                 document.getElementById('commentInput').value = '';
             } catch (error) { showError("Error al comentar."); }
@@ -796,7 +822,6 @@ window.openComments = function(key) {
     }
 };
 
-// --- INITIALIZACIÓN Y POSTEO ---
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     changeSection('Publicaciones'); 
@@ -808,7 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const savedUser = localStorage.getItem('savedRobloxUser');
             if(!savedUser) {
-                showError("⚠️ <strong>Acceso Denegado</strong><br>Para publicar, primero debes registrarte o iniciar sesión en el Menú.");
+                showError("⚠️ <strong>Regístrate primero</strong><br>Para publicar, ve al Menú > Registrarse.");
                 return;
             }
 
@@ -839,12 +864,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const btn = document.getElementById('submitBtn');
             const originalText = btn.textContent;
-            btn.textContent = "Procesando...";
+            btn.textContent = "Subiendo...";
             btn.disabled = true;
 
             try { 
                 const rank = document.getElementById('categorySelect').value; 
-                const user = myUser; // Usuario autenticado
+                const user = myUser; // Usamos el usuario autenticado
                 const title = document.getElementById('title').value;       
                 const desc = document.getElementById('description').value;
                 const section = document.getElementById('sectionInput').value; 
