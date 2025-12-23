@@ -18,8 +18,12 @@
                 <button class="menu-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i> Menú</button>
                 <div id="menuDropdown" class="menu-dropdown">
                     <a href="#" onclick="openFullProfile()">👤 Mi Perfil</a>
-                    <a href="#" onclick="openModal('loginModal')">🔑 Iniciar Sesión</a>
+                    
+                    <a id="menuLogin" href="#" onclick="openModal('loginModal')">🔑 Iniciar Sesión</a>
+                    <a id="menuLogout" href="#" onclick="logoutSystem()" style="display: none; color: #ff4d4d;">🚪 Cerrar Sesión</a>
+                    
                     <a href="#" onclick="openModal('updatesModal')">Actualizaciones</a>
+                    <a href="#" onclick="openModal('aboutModal')">Quiénes somos</a>
                     <a href="#" onclick="openModal('contactModal')">Contactos</a>
                 </div>
             </div>
@@ -127,7 +131,6 @@
         <button onclick="loginSystem()" class="publish-btn" style="background-color: #00a2ff; margin-top:10px;">
             ENTRAR
         </button>
-        
         <p style="text-align:center; margin-top:20px; font-size:0.9em; color:#aaa;">
             ¿No tienes cuenta? <a href="#" onclick="closeModal('loginModal'); openModal('registerModal')" style="color:#00a2ff; font-weight:bold;">Regístrate aquí</a>
         </p>
@@ -138,21 +141,17 @@
         <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">
             Crear Cuenta Nueva
         </h2>
-        
         <div class="form-group">
             <label>Crear Usuario:</label>
             <input type="text" id="regUser" placeholder="Elige un usuario único" required autocomplete="off">
         </div>
-        
         <div class="form-group">
             <label>Crear PIN (4 dígitos):</label>
             <input type="text" id="regPin" placeholder="Ej: 1234" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </div>
-
         <button onclick="registerSystem()" class="publish-btn" style="background-color: #2b2d31; border: 1px solid #00a2ff; color: #00a2ff; margin-top:10px;">
             CREAR CUENTA
         </button>
-        
         <p style="text-align:center; margin-top:20px; font-size:0.9em; color:#aaa;">
             ¿Ya tienes cuenta? <a href="#" onclick="closeModal('registerModal'); openModal('loginModal')" style="color:#00a2ff;">Inicia sesión</a>
         </p>
@@ -161,12 +160,20 @@
     <div id="updatesModal" class="modal-overlay">
         <div class="info-content">
             <span class="close-button" onclick="closeModal('updatesModal')">&times;</span>
-            <h2>Actualizaciones v6.0</h2>
+            <h2>Actualizaciones v6.5</h2>
             <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #ccc; line-height: 1.6;">
-                <li>Nuevo sistema de cuentas</li>
-                <li>Perfil estilo Red Social</li>
+                <li>Cerrar Sesión añadido</li>
+                <li>Menú dinámico</li>
                 <li>Mayor seguridad</li>
             </ul>
+        </div>
+    </div>
+
+    <div id="aboutModal" class="modal-overlay">
+        <div class="info-content">
+            <span class="close-button" onclick="closeModal('aboutModal')">&times;</span>
+            <h2>Quiénes Somos</h2>
+            <p>Somos una comunidad activa en busca de nuevos talentos.</p>
         </div>
     </div>
 
