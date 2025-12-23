@@ -1,5 +1,4 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
-// Importamos 'increment' que es vital para los contadores
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, runTransaction, get, child, set, increment, onChildAdded } from "https://esm.sh/firebase/database";
 
 // --- IMAGEN POR DEFECTO ---
@@ -30,7 +29,7 @@ let allThreadsData = [];
 let verifiedUsersList = []; 
 let myFollowingList = []; 
 let myAvatarUrl = ""; 
-let allUsersMap = {}; // Mapa para guardar info actual de usuarios
+let allUsersMap = {}; 
 
 // --- FUNCIONES DE AYUDA ---
 function showError(msg) {
@@ -52,10 +51,26 @@ function makeLinksClickable(text) {
     });
 }
 
+// --- FUNCIÓN DE FORMATO CORREGIDA (SIN REDONDEO) ---
 function formatCount(num) {
     if (!num) return 0;
-    if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' Mill.';
-    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + ' mil';
+    
+    // 1. MILLONES (Ej: 1.999.999 -> 1.9 Mill.)
+    if (num >= 1000000) {
+        // Truco: Multiplicamos por 10, cortamos decimales (floor), dividimos por 10.
+        // Esto convierte 1.99 en 19.9 -> 19 -> 1.9
+        let millions = Math.floor((num / 1000000) * 10) / 10;
+        return millions + ' Mill.';
+    }
+    
+    // 2. MILES (Ej: 999.999 -> 999 mil)
+    if (num >= 1000) {
+        // Aquí usamos Math.floor directo para quedarnos solo con el entero
+        // Evita que 999.9 se convierta en 1000
+        let thousands = Math.floor(num / 1000); 
+        return thousands + ' mil';
+    }
+    
     return num;
 }
 
@@ -83,7 +98,7 @@ function getUserId() {
 }
 
 function initFirebaseListener() {
-    // 1. CARGAR USUARIOS (Para fotos en vivo y menú)
+    // 1. CARGAR USUARIOS
     onValue(usersRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -91,7 +106,6 @@ function initFirebaseListener() {
         } else {
             allUsersMap = {};
         }
-        // Si hay posts, refrescamos para que se vean las fotos nuevas
         if (allThreadsData.length > 0) {
             renderCurrentView();
         }
