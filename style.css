@@ -225,34 +225,22 @@ footer p { margin: 5px 0; }
     cursor: pointer; margin-top: 10px; transition: all 0.2s ease;
 }
 #customAlertModal button:hover { background-color: #ff0000; color: #fff; transform: scale(1.05); box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
-/* --- ESTILO PARA LA FOTO EN LAS PUBLICACIONES --- */
-
-/* Contenedor del encabezado (Foto + Nombre) */
-.post-header {
-    display: flex;             /* Pone la foto al lado del texto */
-    align-items: center;       /* Centra verticalmente */
-    margin-bottom: 10px;       /* Espacio debajo */
-    width: 100%;
-}
-
-/* La foto pequeña */
+/* FOTO DE PERFIL PEQUEÑA (En Posts y Comentarios) */
 .user-avatar-small {
-    width: 45px;               /* Tamaño fijo */
-    height: 45px;              /* Tamaño fijo */
-    border-radius: 50%;        /* Redonda */
-    object-fit: cover;         /* Que no se deforme */
-border: none;
-    border: 2px solid #00a2ff; /* Borde azul bonito */
-    margin-right: 12px;        /* Separación con el nombre */
-    background-color: #000;    /* Fondo negro por si es transparente */
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #333;
+    margin-right: 10px;
+    vertical-align: middle;
 }
 
-/* Ajuste para el texto del nombre */
-.post-header-info {
-    flex: 1;                   /* Ocupa el resto del espacio */
+/* Ajuste para el encabezado del post */
+.post-header {
     display: flex;
-    flex-direction: column;    /* Nombre arriba, fecha/rango abajo si quieres */
-    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
 }
 /* --- BOTÓN DE SEGUIR (Estilos faltantes) --- */
 .follow-btn {
@@ -283,4 +271,96 @@ border: none;
 
 .follow-btn.following:hover {
     background-color: #0088cc;
+}
+/* --- ESTILO TIKTOK/REELS (Avatar + Menú) --- */
+
+/* Contenedor relativo para posicionar el botón + */
+.avatar-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-right: 12px;
+}
+
+/* La foto de perfil */
+.user-avatar-small {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #1e1f22; /* Borde oscuro para separar */
+    display: block;
+    cursor: pointer;
+}
+
+/* El botón + (Plus) */
+.plus-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 18px;
+    height: 18px;
+    background-color: #fff; /* Fondo blanco */
+    color: #000;            /* Icono negro */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    border: 2px solid #232527; /* Borde del color del fondo para "recortar" */
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.2s;
+}
+
+.plus-badge:hover {
+    transform: scale(1.1);
+}
+
+/* El Menú Flotante */
+.mini-menu-dropdown {
+    display: none; /* Oculto por defecto */
+    position: absolute;
+    top: 40px; /* Debajo de la foto */
+    left: 0;
+    background-color: #1e1f22;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 5px;
+    min-width: 140px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    z-index: 1000;
+}
+
+.mini-menu-dropdown.show {
+    display: block; /* Mostrar cuando tenga esta clase */
+    animation: fadeIn 0.2s ease;
+}
+
+/* Opciones del menú */
+.mini-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    color: #e1e1e1;
+    text-decoration: none;
+    font-size: 0.9em;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.mini-menu-item:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+.mini-menu-item i {
+    font-size: 1.1em;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
