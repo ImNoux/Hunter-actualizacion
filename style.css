@@ -253,3 +253,33 @@ footer p { margin: 5px 0; }
     flex-direction: column;    /* Nombre arriba, fecha/rango abajo si quieres */
     justify-content: center;
 }
+/* --- BOTÓN DE SEGUIR (Estilos faltantes) --- */
+.follow-btn {
+    background: transparent;
+    border: 1px solid #00a2ff;
+    color: #00a2ff;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 0.75em;
+    cursor: pointer;
+    margin-left: 10px;
+    font-weight: bold;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.follow-btn:hover {
+    background-color: rgba(0, 162, 255, 0.1);
+}
+
+/* Estilo cuando ya lo estás siguiendo (Botón "Siguiendo") */
+.follow-btn.following {
+    background-color: #00a2ff;
+    color: #fff;
+    border-color: #00a2ff;
+}
+
+.follow-btn.following:hover {
+    background-color: #0088cc;
+}
