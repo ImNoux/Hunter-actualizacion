@@ -1,4 +1,4 @@
-/* --- 1. RESET Y FONDO (AJUSTADO: Footer abajo + Fondo claro) --- */
+/* --- 1. RESET Y FONDO --- */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {
@@ -6,13 +6,9 @@ html, body {
     font-family: 'Segoe UI', Tahoma, sans-serif;
     color: #e1e1e1;
     background-color: #232527;
-    
-    /* CONFIGURACIÓN PARA FOOTER SIEMPRE ABAJO */
-    min-height: 100vh; 
-    display: flex;     
-    flex-direction: column; 
+    min-height: 100vh; display: flex; flex-direction: column; 
 
-    /* Fondo personalizado (Más claro: 0.5) */
+    /* Fondo personalizado */
     background-image: linear-gradient(rgba(20, 20, 20, 0.5), rgba(20, 20, 20, 0.5)), 
                       url('https://i.ibb.co/mrhC10fw/Line-Runner-Template-1.png');
     background-size: cover; background-position: center; 
@@ -28,12 +24,7 @@ header {
     position: sticky; top: 0; z-index: 100;
     flex-shrink: 0; 
 }
-
-.header-top {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 20px;
-}
-
+.header-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; }
 header h1 {
     margin: 0; color: #fff;
     font-family: 'Luckiest Guy', cursive; 
@@ -43,70 +34,28 @@ header h1 {
 }
 
 /* --- 3. BARRA DE PESTAÑAS Y BOTONES --- */
-.nav-tabs {
-    display: flex;
-    justify-content: center;
-    background-color: #111; 
-    border-top: 1px solid #333;
-}
-
+.nav-tabs { display: flex; justify-content: center; background-color: #111; border-top: 1px solid #333; }
 .tab-btn {
-    flex: 1; 
-    background: none; border: none;
-    color: #888;
-    padding: 12px 0;
-    font-weight: bold; font-size: 0.95em;
-    cursor: pointer;
-    border-bottom: 4px solid transparent; 
-    transition: all 0.3s;
-    text-transform: uppercase;
+    flex: 1; background: none; border: none; color: #888;
+    padding: 12px 0; font-weight: bold; font-size: 0.95em; cursor: pointer;
+    border-bottom: 4px solid transparent; transition: all 0.3s; text-transform: uppercase;
 }
-
 .tab-btn:hover { color: #fff; background-color: #1a1a1a; }
+.tab-btn.active { color: #fff; border-bottom: 4px solid #00a2ff; background-color: #151515; }
 
-.tab-btn.active {
-    color: #fff;
-    border-bottom: 4px solid #00a2ff; 
-    background-color: #151515;
-}
-
-/* BOTONES PEQUEÑOS (Menú y Nuevo) - ESTILO UNIFICADO (BLANCO) */
+/* BOTONES PEQUEÑOS */
 .menu-btn, #newThreadButton {
-    background-color: #fff; 
-    color: #000;            
-    padding: 8px 12px;
-    border: 2px solid #000; 
-    border-radius: 6px;     
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 0.9em;
-    font-family: inherit;
+    background-color: #fff; color: #000; padding: 8px 12px;
+    border: 2px solid #000; border-radius: 6px; cursor: pointer;
+    font-weight: bold; font-size: 0.9em; font-family: inherit;
     transition: transform 0.1s, background-color 0.2s; 
 }
-
-.menu-btn:hover, #newThreadButton:hover {
-    background-color: #f2f2f2; 
-    transform: translateY(-2px); 
-}
-
-.menu-btn:active, #newThreadButton:active {
-    transform: translateY(0);
-}
-
+.menu-btn:hover, #newThreadButton:hover { background-color: #f2f2f2; transform: translateY(-2px); }
+.menu-btn:active, #newThreadButton:active { transform: translateY(0); }
 .menu-container, #newThreadButtonContainer { position: relative; }
 
 /* --- 4. CONTENIDO PRINCIPAL --- */
-main { 
-    padding: 20px; 
-    max-width: 800px; 
-    width: 100%; 
-    margin: 0 auto; 
-    position: relative; 
-    z-index: 5; 
-    
-    /* Empuja el footer hacia abajo si hay poco contenido */
-    flex: 1; 
-}
+main { padding: 20px; max-width: 800px; width: 100%; margin: 0 auto; position: relative; z-index: 5; flex: 1; }
 .thread-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
 .thread {
@@ -119,75 +68,120 @@ main {
 .thread p { color: #ccc; line-height: 1.5; font-size: 0.95em; }
 .thread-date { color: #888; font-size: 0.8em; font-weight: bold; margin-bottom: 5px; display: block;}
 
-/* Estilos para Foto y Video en el post */
-.thread img, .thread video { 
+/* Estilos de compatibilidad para imágenes viejas */
+.thread > img, .thread > video { 
     width: 100%; max-height: 400px; object-fit: contain; background: #000;
     border-radius: 4px; border: 1px solid #333; margin-top: 10px; display: block;
 }
 
-/* Etiqueta de Rango (A la izquierda del nombre) */
-.rank-badge {
-    background-color: #333;
-    color: #00a2ff;
-    font-size: 0.6em;
-    padding: 3px 8px;
-    border-radius: 12px;
-    border: 1px solid #00a2ff;
-    vertical-align: middle;
-    margin-right: 8px; 
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+/* --- CARRUSEL ESTILO INSTAGRAM (WRAPPER) --- */
+/* Este contenedor envuelve todo (fotos + contador + puntos) */
+.media-wrapper {
+    position: relative; /* Necesario para posicionar los elementos flotantes */
+    margin-top: 15px;
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid #333;
+    overflow: hidden; /* Para que nada se salga de los bordes redondeados */
+    background-color: #000;
 }
 
-/* --- 5. MODAL DE CREAR PUBLICACIÓN (Fixed + Scroll) --- */
-.modal-content {
-    display: none; 
-    position: fixed; 
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); 
+.media-carousel {
+    display: flex;
+    overflow-x: auto;
+    gap: 0; 
+    width: 100%;
     
-    width: 90%; 
-    max-width: 400px; 
-    max-height: 85vh; 
-    overflow-y: auto; 
+    /* Proporción estilo Instagram Vertical */
+    aspect-ratio: 4 / 5; 
+    
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+}
 
-    z-index: 3000;
-    
-    background-color: #2b2d31;
-    border: 2px solid #1e1f22;
+.media-carousel::-webkit-scrollbar { display: none; }
+
+.media-carousel img, .media-carousel video {
+    flex: 0 0 100%; 
+    width: 100%;
+    height: 100%;
+    object-fit: contain; 
+    scroll-snap-align: center;
+    background: transparent;
+    border: none;
+}
+
+/* --- ELEMENTOS FLOTANTES (OVERLAYS) --- */
+
+/* 1. Contador tipo pastilla (1/4) */
+.carousel-counter {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background-color: rgba(0, 0, 0, 0.6); /* Fondo oscuro semitransparente */
+    color: white;
+    font-size: 0.75em;
+    font-weight: bold;
+    padding: 4px 10px;
     border-radius: 12px;
-    padding: 25px;
+    pointer-events: none; /* Para que puedas deslizar aunque toques el número */
+    z-index: 10;
+}
+
+/* 2. Contenedor de Puntos (Abajo) */
+.carousel-dots {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%); /* Centrado perfecto */
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* 3. El punto individual */
+.dot {
+    width: 6px;
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.4); /* Gris claro */
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+/* 4. Punto activo (Blanco brillante) */
+.dot.active {
+    background-color: #fff;
+    transform: scale(1.2); /* Un pelín más grande */
+}
+
+/* Rango */
+.rank-badge {
+    background-color: #333; color: #00a2ff; font-size: 0.6em;
+    padding: 3px 8px; border-radius: 12px; border: 1px solid #00a2ff;
+    vertical-align: middle; margin-right: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* --- 5. MODAL DE CREAR PUBLICACIÓN --- */
+.modal-content {
+    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+    width: 90%; max-width: 400px; max-height: 85vh; overflow-y: auto; z-index: 3000;
+    background-color: #2b2d31; border: 2px solid #1e1f22; border-radius: 12px; padding: 25px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.8);
 }
 .close-button { color: #aaa; float: right; font-size: 24px; font-weight: bold; cursor: pointer; }
-
 .modal-content::-webkit-scrollbar { width: 6px; }
 .modal-content::-webkit-scrollbar-thumb { background-color: #555; border-radius: 3px; }
 
-/* Grupos del formulario */
 .form-group { margin-bottom: 15px; }
 form label { display: block; margin-bottom: 6px; font-weight: 600; color: #b5bac1; font-size: 0.9em;}
-
-/* Inputs, Textareas y Selects */
 input[type="text"], textarea, select { 
-    width: 100%; padding: 12px; 
-    background-color: #383a40; 
-    color: #f2f3f5; 
-    border: 1px solid #1e1f22; 
-    border-radius: 6px; 
-    margin-bottom: 0; 
-    font-family: inherit;
-    font-size: 0.95em;
-    transition: all 0.2s ease;
+    width: 100%; padding: 12px; background-color: #383a40; color: #f2f3f5; 
+    border: 1px solid #1e1f22; border-radius: 6px; margin-bottom: 0; 
+    font-family: inherit; font-size: 0.95em; transition: all 0.2s ease;
 }
-input[type="text"]:focus, textarea:focus, select:focus {
-    background-color: #404249;
-    border-color: #00a2ff;
-    outline: none;
-}
+input[type="text"]:focus, textarea:focus, select:focus { background-color: #404249; border-color: #00a2ff; outline: none; }
 
-/* Botón de subir archivo */
 .upload-btn-gray {
     background-color: #383a40; color: #b5bac1; padding: 12px; 
     border: 2px dashed #4e5058; border-radius: 6px;
@@ -195,128 +189,56 @@ input[type="text"]:focus, textarea:focus, select:focus {
     display: block; margin-top: 10px; transition: all 0.2s;
 }
 .upload-btn-gray:hover { background-color: #404249; border-color: #00a2ff; color: #fff; }
+.file-name-display { font-size: 0.8em; color: #00a2ff; text-align: center; margin-top: 5px; min-height: 18px; margin-bottom: 10px;}
 
-.file-name-display {
-    font-size: 0.8em; color: #00a2ff; text-align: center; 
-    margin-top: 5px; min-height: 18px; margin-bottom: 10px;
-}
-
-/* Botón Publicar */
 .publish-btn {
-    width: 100%; padding: 12px; 
-    background-color: #00a2ff; color: white;
-    border: none; border-radius: 6px;
-    font-weight: bold; font-size: 1em; cursor: pointer;
+    width: 100%; padding: 12px; background-color: #00a2ff; color: white;
+    border: none; border-radius: 6px; font-weight: bold; font-size: 1em; cursor: pointer;
     transition: transform 0.1s, background-color 0.2s;
 }
 .publish-btn:hover { background-color: #0088cc; transform: translateY(-2px); }
 
-/* Buscador */
-#searchInput {
-    padding: 12px; border: 3px solid #000; border-radius: 6px;
-    margin: 20px auto; width: 90%; display: block;
-    background-color: #111; color: white; font-weight: bold;
-}
+#searchInput { padding: 12px; border: 3px solid #000; border-radius: 6px; margin: 20px auto; width: 90%; display: block; background-color: #111; color: white; font-weight: bold; }
 
-/* --- 6. MODALES DEL MENÚ Y COMENTARIOS (Ventanas Flotantes) --- */
-.modal-overlay { 
-    display: none; 
-    position: fixed; 
-    top: 0; left: 0; 
-    width: 100%; height: 100%; 
-    background: rgba(0,0,0,0.85); 
-    z-index: 3500; 
-    overflow-y: auto; 
-}
-
-/* La caja flotante centrada */
+/* --- 6. MODALES DEL MENÚ Y COMENTARIOS --- */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3500; overflow-y: auto; }
 .info-content, .comments-content {
-    position: relative;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); 
-    
-    width: 90%;
-    max-width: 400px;
-    
-    background-color: #2b2d31; 
-    border: 2px solid #1e1f22;
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
-    color: #e1e1e1;
-    text-align: center; 
+    position: relative; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+    width: 90%; max-width: 400px; background-color: #2b2d31; border: 2px solid #1e1f22;
+    border-radius: 12px; padding: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.9); color: #e1e1e1; text-align: center; 
 }
+.info-content h2, .comments-content h3 { margin-top: 0; color: #fff; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; font-size: 1.4em; }
+.info-content p { color: #ccc; line-height: 1.6; margin-bottom: 15px; }
 
-.info-content h2, .comments-content h3 {
-    margin-top: 0; 
-    color: #fff; 
-    border-bottom: 2px solid #000; 
-    padding-bottom: 10px; 
-    margin-bottom: 15px;
-    font-size: 1.4em;
-}
-
-.info-content p { 
-    color: #ccc; 
-    line-height: 1.6; 
-    margin-bottom: 15px;
-}
-
-/* Ajuste lista comentarios */
 #commentsList {
-    text-align: left;
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 15px;
-    padding-right: 5px;
-    border: 1px solid #1e1f22;
-    background-color: #232527;
-    padding: 10px;
-    border-radius: 6px;
+    text-align: left; max-height: 300px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;
+    border: 1px solid #1e1f22; background-color: #232527; padding: 10px; border-radius: 6px;
 }
 #commentsList::-webkit-scrollbar { width: 5px; }
 #commentsList::-webkit-scrollbar-thumb { background-color: #00a2ff; border-radius: 3px; }
-
-/* Ajustes formulario comentarios */
 #commentForm { display: flex; gap: 5px; margin-top: 10px; }
 #commentForm button { width: auto; background-color: #fff; color: #000; border: 2px solid #000; }
 
-
-/* --- 7. PAGINACIÓN --- */
+/* --- 7. PAGINACIÓN & FOOTER --- */
 #pagination-container { display: flex; justify-content: center; margin-top: 20px; }
-.pagination-button {
-    background-color: #393b3d; color: #fff; border: 2px solid #000;
-    padding: 8px 14px; margin: 0 5px; cursor: pointer; border-radius: 4px; font-weight: bold;
-}
+.pagination-button { background-color: #393b3d; color: #fff; border: 2px solid #000; padding: 8px 14px; margin: 0 5px; cursor: pointer; border-radius: 4px; font-weight: bold; }
 .pagination-button.active-page { background-color: #00a2ff; }
 
-/* --- 8. FOOTER (CENTRADO Y SIEMPRE AL FONDO) --- */
 footer {
-    text-align: center; 
-    padding: 20px; 
-    background-color: rgba(25, 27, 29, 0.95);
-    border-top: 3px solid #000; 
-    color: #aaa; 
-    font-weight: bold;
-    width: 100% !important; margin: 0 !important; 
-    z-index: 10; position: relative;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    flex-shrink: 0; 
+    text-align: center; padding: 20px; background-color: rgba(25, 27, 29, 0.95);
+    border-top: 3px solid #000; color: #aaa; font-weight: bold; width: 100% !important; 
+    margin: 0 !important; z-index: 10; position: relative;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; flex-shrink: 0; 
 }
 footer p { margin: 5px 0; }
-footer .version { font-size: 0.8em; color: #777; }
 
-/* --- 9. BOTONES INTERACCIÓN --- */
+/* --- 8. EXTRAS --- */
 .thread-actions { display: flex; gap: 20px; margin-top: 15px; }
-.like-button, .comment-button {
-    background: none; border: none; cursor: pointer; color: #aaa; font-weight: bold; font-size: 1em;
-}
+.like-button, .comment-button { background: none; border: none; cursor: pointer; color: #aaa; font-weight: bold; font-size: 1em; }
 .like-button:hover { color: #ff4d4d; }
 .like-button.liked { color: #ff4d4d; }
 .comment-button:hover { color: #00a2ff; }
 
-/* --- 10. EXTRAS --- */
 .menu-dropdown { display: none; position: absolute; top: 40px; left: 0; background: #222; border: 2px solid #000; z-index: 2000; min-width: 160px;}
 .show { display: block !important; }
 .menu-dropdown a { display: block; padding: 10px 20px; color: #fff; text-decoration: none; border-bottom: 1px solid #333; }
@@ -324,3 +246,34 @@ footer .version { font-size: 0.8em; color: #777; }
 
 #floating-robux-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .bouncing-robux { position: absolute; width: 40px; }
+
+/* --- 9. ESTILOS DE LA ALERTA ROJA (PERSONALIZADA) --- */
+#customAlertModal { 
+    z-index: 4000 !important; 
+}
+#customAlertModal .info-content {
+    border: 3px solid #ff4d4d !important;
+    box-shadow: 0 0 30px rgba(255, 77, 77, 0.4); 
+}
+#customAlertModal h2 {
+    color: #ff4d4d !important;
+    border-bottom: 1px solid #ff4d4d !important;
+}
+#customAlertModal button {
+    background-color: #e1e1e1;
+    color: #ff0000;
+    border: 2px solid #ff0000;
+    padding: 10px 25px;
+    font-weight: bold;
+    font-size: 1em;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s ease;
+}
+#customAlertModal button:hover {
+    background-color: #ff0000;
+    color: #fff;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+}
