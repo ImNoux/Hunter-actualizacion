@@ -20,7 +20,6 @@
                     <a href="#" onclick="openFullProfile()">👤 Mi Perfil</a>
                     
                     <a href="#" onclick="openModal('loginModal')">🔑 Iniciar Sesión</a>
-                    <a href="#" onclick="openModal('registerModal')">📝 Registrarse</a>
                     
                     <a href="#" onclick="openModal('updatesModal')">Actualizaciones</a>
                     <a href="#" onclick="openModal('aboutModal')">Quiénes somos</a>
@@ -122,7 +121,7 @@
         </h2>
         <div class="form-group">
             <label>Usuario:</label>
-            <input type="text" id="loginUser" placeholder="Tu usuario" required autocomplete="off">
+            <input type="text" id="loginUser" placeholder="Tu usuario exacto" required autocomplete="off">
         </div>
         <div class="form-group">
             <label>PIN (Clave):</label>
@@ -131,8 +130,9 @@
         <button onclick="loginSystem()" class="publish-btn" style="background-color: #00a2ff; margin-top:10px;">
             ENTRAR
         </button>
-        <p style="text-align:center; margin-top:15px; font-size:0.9em; color:#aaa;">
-            ¿No tienes cuenta? <a href="#" onclick="closeModal('loginModal'); openModal('registerModal')" style="color:#00a2ff;">Regístrate aquí</a>
+        
+        <p style="text-align:center; margin-top:20px; font-size:0.9em; color:#aaa;">
+            ¿No tienes cuenta? <a href="#" onclick="closeModal('loginModal'); openModal('registerModal')" style="color:#00a2ff; font-weight:bold;">Regístrate aquí</a>
         </p>
     </div>
 
@@ -143,25 +143,32 @@
         </h2>
         
         <div class="form-group">
-            <label>Crear Usuario:</label> <input type="text" id="regUser" placeholder="Elige un usuario único" required autocomplete="off">
+            <label>Crear Usuario:</label>
+            <input type="text" id="regUser" placeholder="Elige un usuario único" required autocomplete="off">
         </div>
         
         <div class="form-group">
-            <label>Crear PIN (4 dígitos):</label> <input type="text" id="regPin" placeholder="Ej: 1234" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            <label>Crear PIN (4 dígitos):</label>
+            <input type="text" id="regPin" placeholder="Ej: 1234" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </div>
 
         <button onclick="registerSystem()" class="publish-btn" style="background-color: #2b2d31; border: 1px solid #00a2ff; color: #00a2ff; margin-top:10px;">
             CREAR CUENTA
         </button>
+        
+        <p style="text-align:center; margin-top:20px; font-size:0.9em; color:#aaa;">
+            ¿Ya tienes cuenta? <a href="#" onclick="closeModal('registerModal'); openModal('loginModal')" style="color:#00a2ff;">Inicia sesión</a>
+        </p>
     </div>
 
     <div id="updatesModal" class="modal-overlay">
         <div class="info-content">
             <span class="close-button" onclick="closeModal('updatesModal')">&times;</span>
-            <h2>Actualizaciones v5.5</h2>
+            <h2>Actualizaciones v6.0</h2>
             <ul style="text-align: left; margin-top: 15px; padding-left: 20px; color: #ccc; line-height: 1.6;">
-                <li>Registro e Inicio de Sesión separados</li>
+                <li>Nuevo sistema de cuentas</li>
                 <li>Perfil estilo Red Social</li>
+                <li>Mayor seguridad</li>
             </ul>
         </div>
     </div>
