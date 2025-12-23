@@ -1,8 +1,9 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
-// OJO: Aquí al final está 'increment', indispensable para los contadores
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, runTransaction, get, child, set, increment, onChildAdded } from "https://esm.sh/firebase/database";
 
-// --- CONFIGURACIÓN FIREBASE ---
+// --- IMAGEN POR DEFECTO (Estilo FB/IG) ---
+const DEFAULT_AVATAR = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
+
 const firebaseConfig = {
     apiKey: "AIzaSyDM9E8Y_YW-ld8MH8-yKS345hklA0v5P_w",
     authDomain: "hunterteam.firebaseapp.com",
@@ -26,8 +27,8 @@ let currentSection = 'Publicaciones';
 let allThreadsData = []; 
 let verifiedUsersList = []; 
 let myFollowingList = []; 
+let myAvatarUrl = ""; // Se llenará con tu foto o vacío
 
-// --- FUNCIONES DE AYUDA ---
 function showError(msg) {
     const alertModal = document.getElementById('customAlertModal');
     const alertText = document.getElementById('customAlertText');
@@ -49,12 +50,8 @@ function makeLinksClickable(text) {
 
 function formatCount(num) {
     if (!num) return 0;
-    if (num >= 1000000) {
-        return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' Mill.';
-    }
-    if (num >= 1000) {
-        return (num / 1000).toFixed(1).replace(/\.0$/, '') + ' mil';
-    }
+    if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' Mill.';
+    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + ' mil';
     return num;
 }
 
@@ -82,7 +79,7 @@ function getUserId() {
 }
 
 function initFirebaseListener() {
-    // 1. Cargar Posts
+    // 1. Posts
     const getThreads = query(threadsRef, orderByChild('timestamp'));
     onValue(getThreads, (snapshot) => {
         const data = snapshot.val();
@@ -94,7 +91,7 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 
-    // 2. Cargar Verificados
+    // 2. Verificados
     onValue(verifiedRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -105,18 +102,20 @@ function initFirebaseListener() {
         renderCurrentView(); 
     });
 
-    // 3. Cargar Mis Seguidos (Listener en vivo)
+    // 3. Mis Datos
     const myUser = localStorage.getItem('savedRobloxUser');
     if (myUser) {
-        const myFollowingRef = ref(db, `users/${myUser}/following`);
-        onValue(myFollowingRef, (snapshot) => {
+        const myUserRef = ref(db, `users/${myUser}`);
+        onValue(myUserRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                myFollowingList = Object.keys(data);
+                myFollowingList = data.following ? Object.keys(data.following) : [];
+                // Si tienes foto, la guardamos. Si no, guardamos la DEFAULT
+                myAvatarUrl = data.avatar || DEFAULT_AVATAR;
             } else {
                 myFollowingList = [];
+                myAvatarUrl = DEFAULT_AVATAR;
             }
-            // Importante: Volver a renderizar para actualizar los botones grises/azules
             renderCurrentView();
         });
     }
@@ -164,7 +163,7 @@ function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.classList.add('thread');
 
-    // Carrusel Multimedia
+    // Carrusel
     let mediaHTML = '';
     if (thread.images && Array.isArray(thread.images) && thread.images.length > 0) {
         const totalImages = thread.images.length;
@@ -236,35 +235,37 @@ function renderThread(key, thread, container) {
 
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
-    // --- LÓGICA DEL BOTÓN SEGUIR (PEQUEÑO) ---
     let followBtnHTML = '';
     const myUser = localStorage.getItem('savedRobloxUser');
-    
-    // Solo mostrar si estoy logueado y NO es mi propio post
     if (myUser && myUser !== authorName) {
         const isFollowing = myFollowingList.includes(authorName);
         const btnText = isFollowing ? 'SIGUIENDO' : 'SEGUIR';
         const btnClass = isFollowing ? 'follow-btn following' : 'follow-btn';
-        
-        // onclick llama directamente a toggleFollow
         followBtnHTML = `<button class="${btnClass}" onclick="toggleFollow('${authorName}')">${btnText}</button>`;
     }
 
+    // --- AQUÍ APLICAMOS LA FOTO POR DEFECTO ---
+    // Si thread.authorAvatar no existe, usamos DEFAULT_AVATAR
+    const userAvatar = thread.authorAvatar || DEFAULT_AVATAR;
+
     div.innerHTML = `
         <div class="thread-date">${thread.displayDate}</div>
-        <div style="margin-bottom: 5px; font-size: 0.9em; color: #aaa;">
-            ${rankBadge} 
-            <strong class="clickable-name" style="color: #fff;" onclick="openUserProfile('${authorName}')">${authorName}</strong> 
-            ${verifyBadge}
-            ${followBtnHTML}
+        <div class="post-header">
+            <img src="${userAvatar}" class="user-avatar-small" alt="Avatar">
+            <div style="flex: 1;">
+                <div style="font-size: 0.9em; color: #aaa;">
+                    ${rankBadge} 
+                    <strong class="clickable-name" style="color: #fff;" onclick="openUserProfile('${authorName}')">${authorName}</strong> 
+                    ${verifyBadge}
+                    ${followBtnHTML}
+                </div>
+            </div>
         </div>
         <h2>${thread.title}</h2>
         <p>${descriptionWithLinks}</p>
-        
         <div class="media-container-hook-${key}">
             ${mediaHTML}
         </div>
-        
         <div class="thread-actions">
             <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${rawLikeCount}, this)">
                 <i class="fas fa-heart"></i> ${likeCountDisplay}
@@ -279,7 +280,6 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 
-    // Eventos de Scroll del Carrusel
     if (thread.images && thread.images.length > 0) {
         const injectedWrapper = div.querySelector(`.media-container-hook-${key} .media-wrapper`);
         if(injectedWrapper) {
@@ -300,13 +300,12 @@ function renderThread(key, thread, container) {
         }
     }
 }
-// --- PARTE 3: ACCIONES Y LÓGICA ---
+// --- PARTE 3: ACCIONES Y PERFIL ---
 
-// 1. ABRIR PERFIL (CUALQUIERA)
 window.openUserProfile = function(targetUser) {
     if(!targetUser) return;
 
-    // Reset Visual (Limpiar datos anteriores)
+    // Reset Visual con DEFAULT_AVATAR
     const elements = {
         name: document.getElementById('profileModalName'),
         rank: document.getElementById('profileModalRank'),
@@ -314,32 +313,35 @@ window.openUserProfile = function(targetUser) {
         following: document.getElementById('profileFollowing'),
         posts: document.getElementById('profilePosts'),
         likes: document.getElementById('profileLikes'),
-        btnContainer: document.getElementById('profileFollowBtnContainer')
+        btnContainer: document.getElementById('profileFollowBtnContainer'),
+        img: document.getElementById('profileModalImage'),
+        editBtn: document.getElementById('editPhotoBtn'),
+        verifiedBadge: document.getElementById('profileVerifiedBadge')
     };
 
     if(elements.name) elements.name.textContent = targetUser;
     if(elements.rank) elements.rank.textContent = "Cargando...";
     if(elements.followers) elements.followers.textContent = "-";
-    if(elements.following) elements.following.textContent = "-";
-    if(elements.posts) elements.posts.textContent = "-";
-    if(elements.likes) elements.likes.textContent = "-";
-    if(elements.btnContainer) elements.btnContainer.innerHTML = "";
+    if(elements.img) elements.img.src = DEFAULT_AVATAR; // PONEMOS LA DEFAULT DE INICIO
+    if(elements.verifiedBadge) elements.verifiedBadge.innerHTML = ""; 
 
-    // Abrir Modal
     const modal = document.getElementById('userProfileModal');
     if(modal) {
         document.getElementById("menuDropdown").classList.remove('show');
         modal.style.display = 'block';
     }
 
-    // Datos de Firebase (Seguidores/Seguidos)
     const userRef = ref(db, `users/${targetUser}`);
     onValue(userRef, (snapshot) => {
         const data = snapshot.val() || {};
         if(elements.followers) elements.followers.textContent = formatCount(data.followersCount || 0);
         if(elements.following) elements.following.textContent = formatCount(data.followingCount || 0);
+        
+        // Si hay avatar en DB, úsalo. Si no, usa DEFAULT.
+        if(elements.img) {
+            elements.img.src = data.avatar || DEFAULT_AVATAR;
+        }
 
-        // Calcular Posts y Likes recorriendo todo
         let posts = 0;
         let likes = 0;
         let rank = "Miembro";
@@ -358,49 +360,100 @@ window.openUserProfile = function(targetUser) {
 
     }, { onlyOnce: true });
 
-    // Renderizar Botón Seguir Grande (Dentro del Perfil)
     const myUser = localStorage.getItem('savedRobloxUser');
-    if (myUser && myUser !== targetUser) {
-        const isFollowing = myFollowingList.includes(targetUser);
-        const btnText = isFollowing ? 'DEJAR DE SEGUIR' : 'SEGUIR';
-        const btnColor = isFollowing ? '#555' : '#00a2ff';
+    if(myUser === targetUser) {
+        if(elements.editBtn) elements.editBtn.style.display = 'block';
+        if(elements.btnContainer) elements.btnContainer.innerHTML = ""; 
+    } else {
+        if(elements.editBtn) elements.editBtn.style.display = 'none'; 
         
-        const btnHTML = `
-            <button onclick="toggleFollowFromProfile('${targetUser}')" 
-                style="background: ${btnColor}; color: white; border: none; padding: 10px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s;">
-                ${btnText}
-            </button>
-        `;
-        if(elements.btnContainer) elements.btnContainer.innerHTML = btnHTML;
+        if (myUser) {
+            const isFollowing = myFollowingList.includes(targetUser);
+            const btnText = isFollowing ? 'DEJAR DE SEGUIR' : 'SEGUIR';
+            const btnColor = isFollowing ? '#555' : '#00a2ff';
+            
+            const btnHTML = `
+                <button onclick="toggleFollowFromProfile('${targetUser}')" 
+                    style="background: ${btnColor}; color: white; border: none; padding: 10px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s;">
+                    ${btnText}
+                </button>
+            `;
+            if(elements.btnContainer) elements.btnContainer.innerHTML = btnHTML;
+        }
+    }
+
+    if(verifiedUsersList.includes(targetUser.toLowerCase())) {
+        if(elements.verifiedBadge) {
+            elements.verifiedBadge.innerHTML = '<i class="fas fa-check-circle" style="color:#00a2ff; font-size: 1.2em;"></i>';
+        }
     }
 };
 
-// Función auxiliar para el botón dentro del perfil
+const avatarInput = document.getElementById('avatarUpload');
+if(avatarInput) {
+    avatarInput.onchange = async function(e) {
+        if(this.files && this.files.length > 0) {
+            const file = this.files[0];
+            const myUser = localStorage.getItem('savedRobloxUser');
+            if(!myUser) return;
+
+            const img = document.getElementById('profileModalImage');
+            img.style.opacity = "0.5";
+
+            const cloudName = 'dmrlmfoip';
+            const uploadPreset = 'comunidad_arc';
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', uploadPreset);
+
+            try {
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+                    method: 'POST', body: formData
+                });
+                const data = await res.json();
+                const newAvatarUrl = data.secure_url;
+
+                await update(ref(db, `users/${myUser}`), {
+                    avatar: newAvatarUrl
+                });
+
+                img.src = newAvatarUrl;
+                img.style.opacity = "1";
+                alert("✅ Foto de perfil actualizada.");
+                // Actualizamos variable local también
+                myAvatarUrl = newAvatarUrl;
+
+            } catch(err) {
+                console.error(err);
+                alert("Error al subir imagen.");
+                img.style.opacity = "1";
+            }
+        }
+    };
+}
+
 window.toggleFollowFromProfile = function(targetUser) {
     window.toggleFollow(targetUser);
     setTimeout(() => {
         const modal = document.getElementById('userProfileModal');
         if(modal && modal.style.display === 'block') {
-             window.openUserProfile(targetUser); // Refrescar modal
+             window.openUserProfile(targetUser);
         }
     }, 300); 
 };
 
-// --- FUNCIÓN PRINCIPAL: SEGUIR / DEJAR DE SEGUIR ---
 window.toggleFollow = function(targetUser) {
-    console.log("--> Click en Seguir a:", targetUser); 
-
     const myUser = localStorage.getItem('savedRobloxUser');
-    
-    // Validación: Usuario logueado
     if(!myUser) {
-        showError("Para seguir usuarios, primero debes publicar algo o comentar para registrar tu nombre.");
+        showError("Debes publicar algo primero.");
         return;
     }
-
-    // Validación: No seguirse a sí mismo
     if(myUser === targetUser) {
         showError("No puedes seguirte a ti mismo.");
+        return;
+    }
+    if (typeof increment === 'undefined') {
+        alert("Error: Falta 'increment' en imports.");
         return;
     }
 
@@ -408,25 +461,18 @@ window.toggleFollow = function(targetUser) {
     const updates = {};
     
     if (isFollowing) {
-        // --- DEJAR DE SEGUIR ---
         updates[`users/${myUser}/following/${targetUser}`] = null; 
         updates[`users/${targetUser}/followers/${myUser}`] = null;
         updates[`users/${myUser}/followingCount`] = increment(-1);
         updates[`users/${targetUser}/followersCount`] = increment(-1);
     } else {
-        // --- SEGUIR ---
         updates[`users/${myUser}/following/${targetUser}`] = true; 
         updates[`users/${targetUser}/followers/${myUser}`] = true;
         updates[`users/${myUser}/followingCount`] = increment(1);
         updates[`users/${targetUser}/followersCount`] = increment(1);
     }
     
-    update(ref(db), updates)
-        .then(() => console.log("Follow actualizado"))
-        .catch(err => {
-            console.error(err);
-            showError("Error al conectar con la base de datos.");
-        });
+    update(ref(db), updates).catch(err => showError("Error DB: " + err.message));
 };
 
 window.toggleLike = function(key, currentCount, btn) {
@@ -468,9 +514,7 @@ async function checkUsernameAvailability(username) {
 
 window.openComments = function(key) {
     const threadViewRef = ref(db, `threads/${key}/views`);
-    runTransaction(threadViewRef, (currentViews) => {
-        return (currentViews || 0) + 1;
-    });
+    runTransaction(threadViewRef, (currentViews) => { return (currentViews || 0) + 1; });
 
     const modal = document.getElementById('commentsModal');
     const list = document.getElementById('commentsList');
@@ -498,7 +542,19 @@ window.openComments = function(key) {
                 const authorName = c.username || 'Anónimo';
                 const isVerified = verifiedUsersList.includes(authorName.toLowerCase());
                 const badge = isVerified ? '<i class="fas fa-check-circle" style="color:#00a2ff; margin-left:5px;"></i>' : '';
-                item.innerHTML = `<span style="color:#00a2ff;font-weight:bold;">${authorName}</span>${badge}: <span style="color:#ddd;">${commentWithLinks}</span>`;
+                
+                // --- FOTO EN COMENTARIOS (O DEFAULT) ---
+                const avatar = c.authorAvatar || DEFAULT_AVATAR;
+                
+                item.innerHTML = `
+                    <div style="display:flex; align-items:flex-start; margin-bottom: 5px;">
+                        <img src="${avatar}" style="width:25px; height:25px; border-radius:50%; margin-right:8px; object-fit:cover;">
+                        <div>
+                            <span style="color:#00a2ff;font-weight:bold;">${authorName}</span>${badge}: 
+                            <span style="color:#ddd;">${commentWithLinks}</span>
+                        </div>
+                    </div>
+                `;
                 list.appendChild(item);
             });
         } else {
@@ -515,31 +571,32 @@ window.openComments = function(key) {
                 const usr = document.getElementById('usernameInput').value || 'Anónimo';
                 if (usr !== 'Anónimo') {
                     const isAvailable = await checkUsernameAvailability(usr);
-                    if (!isAvailable) {
-                        showError(`El usuario <strong>"${usr}"</strong> ya está ocupado.<br><br>Si eres nuevo, elige otro nombre.`);
-                        return;
-                    }
+                    if (!isAvailable) { showError(`Usuario ocupado.`); return; }
                 }
                 if(!localStorage.getItem('savedRobloxUser') && usr !== 'Anónimo') {
                     localStorage.setItem('savedRobloxUser', usr);
                     const uInput = document.getElementById('usernameInput');
                     if(uInput) { uInput.disabled=true; uInput.style.backgroundColor='#252525'; }
                 }
-                await push(commentsRef, { text: txt, username: usr, timestamp: Date.now() });
+                
+                // GUARDAR AVATAR EN EL COMENTARIO
+                await push(commentsRef, { 
+                    text: txt, 
+                    username: usr, 
+                    timestamp: Date.now(),
+                    // Si tienes foto la usa, si no la DEFAULT
+                    authorAvatar: myAvatarUrl || DEFAULT_AVATAR 
+                });
                 document.getElementById('commentInput').value = '';
-            } catch (error) {
-                console.error(error);
-                showError("Error al comentar: " + error.message);
-            }
+            } catch (error) { showError("Error al comentar."); }
         }
     }
 };
 
-// --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     changeSection('Publicaciones'); 
-
+    
     const robloxInput = document.getElementById('robloxUser');
     const savedRobloxUser = localStorage.getItem('savedRobloxUser');
     if(savedRobloxUser && robloxInput) {
@@ -551,11 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const searchIn = document.getElementById('searchInput');
     if(searchIn) {
-        searchIn.oninput = (e) => {
-            searchTerm = e.target.value;
-            currentPage = 1;
-            renderCurrentView();
-        };
+        searchIn.oninput = (e) => { searchTerm = e.target.value; currentPage = 1; renderCurrentView(); };
     }
 
     const btnNew = document.getElementById('newThreadButton');
@@ -592,26 +645,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const modal = document.getElementById('newThreadModalContent');
 
                 if (!user) { throw new Error("Debes escribir un usuario"); }
-                
                 const isAvailable = await checkUsernameAvailability(user);
                 if (!isAvailable) {
-                    showError(`El usuario <strong>"${user}"</strong> ya está ocupado.<br><br>Por favor, elige otro nombre.`);
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                    return;
+                    showError(`El usuario <strong>"${user}"</strong> ya está ocupado.`);
+                    btn.disabled = false; btn.textContent = originalText; return;
                 }
-
                 if(!localStorage.getItem('savedRobloxUser')) {
                     localStorage.setItem('savedRobloxUser', user);
                     const rInput = document.getElementById('robloxUser');
-                    if(rInput) {
-                        rInput.disabled = true;
-                        rInput.style.backgroundColor = '#252525';
-                    }
+                    if(rInput) { rInput.disabled = true; rInput.style.backgroundColor = '#252525'; }
                 }
 
                 btn.textContent = "Subiendo...";
-
                 let mediaUrls = [];
                 if(fileInput && fileInput.files && fileInput.files.length > 0) {
                     const cloudName = 'dmrlmfoip';
@@ -626,10 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             });
                             const data = await res.json();
                             return data.secure_url;
-                        } catch(err) {
-                            console.error("Error subiendo una imagen:", err);
-                            return null;
-                        }
+                        } catch(err) { return null; }
                     });
                     const results = await Promise.all(uploadPromises);
                     mediaUrls = results.filter(url => url !== null); 
@@ -644,11 +686,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     images: mediaUrls, 
                     timestamp: Date.now(),
                     displayDate: new Date().toLocaleDateString('es-ES'),
-                    views: 0 
+                    views: 0,
+                    // Si no tiene foto, guardamos la DEFAULT en el post
+                    authorAvatar: myAvatarUrl || DEFAULT_AVATAR
                 };
 
                 await push(threadsRef, newPost);
-                
                 form.reset();
                 if(localStorage.getItem('savedRobloxUser')) {
                     document.getElementById('robloxUser').value = localStorage.getItem('savedRobloxUser');
@@ -660,8 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('sectionInput').value = currentSection;
 
             } catch (error) {
-                console.error(error);
-                showError("Error: " + error.message + "<br><br>Revisa tu conexión o las Reglas de Firebase.");
+                showError("Error: " + error.message);
                 btn.textContent = originalText;
                 btn.disabled = false;
             }
@@ -681,7 +723,6 @@ function initBouncingRobux() {
         img.style.left = Math.random() * 80 + '%';
         img.style.top = Math.random() * 80 + '%';
         container.appendChild(img);
-
         let x = parseFloat(img.style.left);
         let y = parseFloat(img.style.top);
         let dx = (Math.random() - 0.5) * 0.5;
@@ -690,8 +731,7 @@ function initBouncingRobux() {
             x += dx; y += dy;
             if(x<=0 || x>=95) dx *= -1;
             if(y<=0 || y>=95) dy *= -1;
-            img.style.left = x + '%';
-            img.style.top = y + '%';
+            img.style.left = x + '%'; img.style.top = y + '%';
         }, 20);
     }
 }
