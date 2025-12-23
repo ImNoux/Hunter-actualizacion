@@ -1,6 +1,8 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
+// OJO: Aquí al final está 'increment', indispensable para los contadores
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, runTransaction, get, child, set, increment, onChildAdded } from "https://esm.sh/firebase/database";
 
+// --- CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyDM9E8Y_YW-ld8MH8-yKS345hklA0v5P_w",
     authDomain: "hunterteam.firebaseapp.com",
@@ -25,6 +27,7 @@ let allThreadsData = [];
 let verifiedUsersList = []; 
 let myFollowingList = []; 
 
+// --- FUNCIONES DE AYUDA ---
 function showError(msg) {
     const alertModal = document.getElementById('customAlertModal');
     const alertText = document.getElementById('customAlertText');
@@ -79,7 +82,7 @@ function getUserId() {
 }
 
 function initFirebaseListener() {
-    // 1. Posts
+    // 1. Cargar Posts
     const getThreads = query(threadsRef, orderByChild('timestamp'));
     onValue(getThreads, (snapshot) => {
         const data = snapshot.val();
@@ -91,7 +94,7 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 
-    // 2. Verificados
+    // 2. Cargar Verificados
     onValue(verifiedRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -102,7 +105,7 @@ function initFirebaseListener() {
         renderCurrentView(); 
     });
 
-    // 3. Mis Seguidos
+    // 3. Cargar Mis Seguidos (Listener en vivo)
     const myUser = localStorage.getItem('savedRobloxUser');
     if (myUser) {
         const myFollowingRef = ref(db, `users/${myUser}/following`);
@@ -113,10 +116,11 @@ function initFirebaseListener() {
             } else {
                 myFollowingList = [];
             }
+            // Importante: Volver a renderizar para actualizar los botones grises/azules
+            renderCurrentView();
         });
     }
 }
-// --- PARTE 2: RENDERIZADO (Con botón SEGUIR y Nombre Clicable) ---
 function renderCurrentView() {
     const threadContainer = document.querySelector('.thread-container');
     const noThreadsMessage = document.getElementById('noThreadsMessage');
@@ -160,7 +164,7 @@ function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.classList.add('thread');
 
-    // Carrusel
+    // Carrusel Multimedia
     let mediaHTML = '';
     if (thread.images && Array.isArray(thread.images) && thread.images.length > 0) {
         const totalImages = thread.images.length;
@@ -232,14 +236,17 @@ function renderThread(key, thread, container) {
 
     const descriptionWithLinks = makeLinksClickable(thread.description);
 
-    // --- RECUPERAMOS EL BOTÓN PEQUEÑO ---
+    // --- LÓGICA DEL BOTÓN SEGUIR (PEQUEÑO) ---
     let followBtnHTML = '';
     const myUser = localStorage.getItem('savedRobloxUser');
+    
+    // Solo mostrar si estoy logueado y NO es mi propio post
     if (myUser && myUser !== authorName) {
         const isFollowing = myFollowingList.includes(authorName);
         const btnText = isFollowing ? 'SIGUIENDO' : 'SEGUIR';
         const btnClass = isFollowing ? 'follow-btn following' : 'follow-btn';
-        // Nota: Este botón llama a toggleFollow directamente (sin abrir perfil)
+        
+        // onclick llama directamente a toggleFollow
         followBtnHTML = `<button class="${btnClass}" onclick="toggleFollow('${authorName}')">${btnText}</button>`;
     }
 
@@ -272,7 +279,7 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 
-    // Eventos de Scroll
+    // Eventos de Scroll del Carrusel
     if (thread.images && thread.images.length > 0) {
         const injectedWrapper = div.querySelector(`.media-container-hook-${key} .media-wrapper`);
         if(injectedWrapper) {
@@ -293,18 +300,30 @@ function renderThread(key, thread, container) {
         }
     }
 }
-// --- NUEVO: ABRIR PERFIL (CUALQUIERA) ---
+// --- PARTE 3: ACCIONES Y LÓGICA ---
+
+// 1. ABRIR PERFIL (CUALQUIERA)
 window.openUserProfile = function(targetUser) {
     if(!targetUser) return;
 
-    // Reset Visual
-    document.getElementById('profileModalName').textContent = targetUser;
-    document.getElementById('profileModalRank').textContent = "Cargando...";
-    document.getElementById('profileFollowers').textContent = "-";
-    document.getElementById('profileFollowing').textContent = "-";
-    document.getElementById('profilePosts').textContent = "-";
-    document.getElementById('profileLikes').textContent = "-";
-    document.getElementById('profileFollowBtnContainer').innerHTML = "";
+    // Reset Visual (Limpiar datos anteriores)
+    const elements = {
+        name: document.getElementById('profileModalName'),
+        rank: document.getElementById('profileModalRank'),
+        followers: document.getElementById('profileFollowers'),
+        following: document.getElementById('profileFollowing'),
+        posts: document.getElementById('profilePosts'),
+        likes: document.getElementById('profileLikes'),
+        btnContainer: document.getElementById('profileFollowBtnContainer')
+    };
+
+    if(elements.name) elements.name.textContent = targetUser;
+    if(elements.rank) elements.rank.textContent = "Cargando...";
+    if(elements.followers) elements.followers.textContent = "-";
+    if(elements.following) elements.following.textContent = "-";
+    if(elements.posts) elements.posts.textContent = "-";
+    if(elements.likes) elements.likes.textContent = "-";
+    if(elements.btnContainer) elements.btnContainer.innerHTML = "";
 
     // Abrir Modal
     const modal = document.getElementById('userProfileModal');
@@ -317,10 +336,10 @@ window.openUserProfile = function(targetUser) {
     const userRef = ref(db, `users/${targetUser}`);
     onValue(userRef, (snapshot) => {
         const data = snapshot.val() || {};
-        document.getElementById('profileFollowers').textContent = formatCount(data.followersCount || 0);
-        document.getElementById('profileFollowing').textContent = formatCount(data.followingCount || 0);
+        if(elements.followers) elements.followers.textContent = formatCount(data.followersCount || 0);
+        if(elements.following) elements.following.textContent = formatCount(data.followingCount || 0);
 
-        // Calcular Posts y Likes
+        // Calcular Posts y Likes recorriendo todo
         let posts = 0;
         let likes = 0;
         let rank = "Miembro";
@@ -333,39 +352,55 @@ window.openUserProfile = function(targetUser) {
             }
         });
 
-        document.getElementById('profilePosts').textContent = formatCount(posts);
-        document.getElementById('profileLikes').textContent = formatCount(likes);
-        document.getElementById('profileModalRank').textContent = rank;
+        if(elements.posts) elements.posts.textContent = formatCount(posts);
+        if(elements.likes) elements.likes.textContent = formatCount(likes);
+        if(elements.rank) elements.rank.textContent = rank;
 
     }, { onlyOnce: true });
 
-    // Botón Seguir Grande
+    // Renderizar Botón Seguir Grande (Dentro del Perfil)
     const myUser = localStorage.getItem('savedRobloxUser');
     if (myUser && myUser !== targetUser) {
         const isFollowing = myFollowingList.includes(targetUser);
-        const btnText = isFollowing ? 'SIGUIENDO' : 'SEGUIR';
+        const btnText = isFollowing ? 'DEJAR DE SEGUIR' : 'SEGUIR';
         const btnColor = isFollowing ? '#555' : '#00a2ff';
         
         const btnHTML = `
             <button onclick="toggleFollowFromProfile('${targetUser}')" 
-                style="background: ${btnColor}; color: white; border: none; padding: 10px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%;">
+                style="background: ${btnColor}; color: white; border: none; padding: 10px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s;">
                 ${btnText}
             </button>
         `;
-        document.getElementById('profileFollowBtnContainer').innerHTML = btnHTML;
+        if(elements.btnContainer) elements.btnContainer.innerHTML = btnHTML;
     }
 };
 
+// Función auxiliar para el botón dentro del perfil
 window.toggleFollowFromProfile = function(targetUser) {
     window.toggleFollow(targetUser);
-    setTimeout(() => openUserProfile(targetUser), 200); 
+    setTimeout(() => {
+        const modal = document.getElementById('userProfileModal');
+        if(modal && modal.style.display === 'block') {
+             window.openUserProfile(targetUser); // Refrescar modal
+        }
+    }, 300); 
 };
 
-// --- ACCIONES ---
+// --- FUNCIÓN PRINCIPAL: SEGUIR / DEJAR DE SEGUIR ---
 window.toggleFollow = function(targetUser) {
+    console.log("--> Click en Seguir a:", targetUser); 
+
     const myUser = localStorage.getItem('savedRobloxUser');
+    
+    // Validación: Usuario logueado
     if(!myUser) {
-        showError("Debes publicar algo o comentar primero para tener un nombre de usuario.");
+        showError("Para seguir usuarios, primero debes publicar algo o comentar para registrar tu nombre.");
+        return;
+    }
+
+    // Validación: No seguirse a sí mismo
+    if(myUser === targetUser) {
+        showError("No puedes seguirte a ti mismo.");
         return;
     }
 
@@ -373,21 +408,25 @@ window.toggleFollow = function(targetUser) {
     const updates = {};
     
     if (isFollowing) {
+        // --- DEJAR DE SEGUIR ---
         updates[`users/${myUser}/following/${targetUser}`] = null; 
         updates[`users/${targetUser}/followers/${myUser}`] = null;
         updates[`users/${myUser}/followingCount`] = increment(-1);
         updates[`users/${targetUser}/followersCount`] = increment(-1);
     } else {
+        // --- SEGUIR ---
         updates[`users/${myUser}/following/${targetUser}`] = true; 
         updates[`users/${targetUser}/followers/${myUser}`] = true;
         updates[`users/${myUser}/followingCount`] = increment(1);
         updates[`users/${targetUser}/followersCount`] = increment(1);
     }
     
-    update(ref(db), updates).catch(err => {
-        console.error(err);
-        showError("Error al seguir usuario.");
-    });
+    update(ref(db), updates)
+        .then(() => console.log("Follow actualizado"))
+        .catch(err => {
+            console.error(err);
+            showError("Error al conectar con la base de datos.");
+        });
 };
 
 window.toggleLike = function(key, currentCount, btn) {
