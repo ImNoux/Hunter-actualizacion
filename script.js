@@ -27,7 +27,7 @@ let allThreadsData = [];
 let verifiedUsersList = []; 
 let allUsersMap = {}; 
 let myFollowingList = []; 
-let userBeingReported = ''; // Variable para el sistema de reportes
+let userBeingReported = '';
 // --- TOASTS ---
 window.showToast = function(message, type = 'info') {
     const container = document.getElementById('toastContainer');
@@ -80,17 +80,18 @@ window.getUserId = function() {
     return userId;
 }
 
-// --- LISTENERS (CON DETECCIÓN DE BANEO) ---
+// --- LISTENERS PRINCIPALES ---
 function initFirebaseListener() {
+    // 1. Escuchar Usuarios
     onValue(usersRef, (snap) => { 
         allUsersMap = snap.val() || {}; 
         const myUser = localStorage.getItem('savedRobloxUser');
         
-        // Verificación de baneo en tiempo real
+        // CHECK DE BANEO AUTOMÁTICO
         if (myUser && allUsersMap[myUser] && allUsersMap[myUser].isBanned === true) {
+            showToast("tu cuenta ha sido suspendida", "error");
             localStorage.clear();
-            alert("TU CUENTA HA SIDO SUSPENDIDA.");
-            window.location.reload();
+            setTimeout(() => { window.location.reload(); }, 3000);
             return;
         }
 
@@ -99,15 +100,19 @@ function initFirebaseListener() {
         } else {
             myFollowingList = [];
         }
+        // Actualizar vista si hay cambios
         if (allThreadsData.length > 0) renderCurrentView(); 
     });
     
+    // 2. Escuchar Publicaciones (Threads)
     onValue(query(threadsRef, orderByChild('timestamp')), (snap) => {
         const data = snap.val();
+        // Convertir objeto a array y ordenar por fecha (más nuevo primero)
         allThreadsData = data ? Object.entries(data).sort((a,b) => b[1].timestamp - a[1].timestamp) : [];
-        renderCurrentView();
+        renderCurrentView(); // <--- IMPORTANTE: Esto dibuja los posts
     });
     
+    // 3. Escuchar Verificados
     onValue(verifiedRef, (snap) => {
         const data = snap.val();
         verifiedUsersList = data ? Object.keys(data).map(n => n.toLowerCase()) : [];
@@ -119,11 +124,13 @@ window.changeSection = function(sectionName) {
     currentSection = sectionName;
     localStorage.setItem('lastSection', sectionName);
     
+    // Solo olvidar el perfil visitado si NO vamos a la pestaña Perfil
     if(sectionName !== 'Perfil') {
         localStorage.removeItem('lastVisitedProfile');
         viewingUserProfile = ''; 
     }
     
+    // Actualizar iconos del menú
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const sc = document.getElementById('searchContainer');
     
@@ -135,6 +142,7 @@ window.changeSection = function(sectionName) {
         const map = { Home: 'nav-home', Activity: 'nav-activity', Perfil: 'nav-profile' };
         if(map[sectionName]) document.getElementById(map[sectionName]).classList.add('active');
     }
+    
     renderCurrentView();
     if(sectionName === 'Home') window.scrollTo(0,0);
 };
@@ -151,6 +159,7 @@ window.openFullProfile = (u) => {
     changeSection('Perfil'); 
 };
 
+// Despachador de Vistas
 function renderCurrentView() {
     const container = document.querySelector('.thread-container');
     if(!container) return;
@@ -163,9 +172,9 @@ function renderCurrentView() {
         if (searchTerm) renderPostList(container, true);
         return;
     }
-    renderPostList(container, false);
+    renderPostList(container, false); // Por defecto: Home
 }
-// --- FUNCIÓN CONTADOR FOTOS ---
+
 window.updateImageCounter = function(carousel) {
     const width = carousel.offsetWidth;
     const currentIndex = Math.round(carousel.scrollLeft / width) + 1;
@@ -173,8 +182,7 @@ window.updateImageCounter = function(carousel) {
     const badge = carousel.parentElement.querySelector('.image-counter-badge');
     if(badge) badge.innerText = `${currentIndex}/${totalImages}`;
 };
-
-// --- RENDERIZADO DE POSTS ---
+// --- RENDERIZADO DE UN POST INDIVIDUAL ---
 function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.className = 'thread';
@@ -190,6 +198,7 @@ function renderThread(key, thread, container) {
     const followText = isFollowing ? "Dejar de seguir" : "Seguir";
     const followIcon = isFollowing ? "minus-circle" : "plus-circle";
     
+    // Avatar y menú flotante
     let avatarHTML = '';
     if (!isMe && myUser) {
         if (isFollowing) {
@@ -213,6 +222,7 @@ function renderThread(key, thread, container) {
         avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
     }
     
+    // Imágenes
     let mediaHTML = '';
     if(thread.images && thread.images.length > 1) {
         mediaHTML = `
@@ -263,19 +273,8 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 }
-window.toggleMiniMenu = function(element) {
-    document.querySelectorAll('.mini-action-menu.show').forEach(el => {
-        if(el !== element.querySelector('.mini-action-menu')) el.classList.remove('show');
-    });
-    const menu = element.querySelector('.mini-action-menu');
-    if(menu) menu.classList.toggle('show');
-}
-document.addEventListener('click', function(e) {
-    if(!e.target.closest('.avatar-wrapper')) {
-        document.querySelectorAll('.mini-action-menu.show').forEach(el => el.classList.remove('show'));
-    }
-});
 
+// --- RENDERIZADO DE PERFIL COMPLETO ---
 function renderFullProfile(container) {
     const target = viewingUserProfile || localStorage.getItem('savedRobloxUser');
     if (!target) return showToast("Inicia sesión", "error");
@@ -286,18 +285,15 @@ function renderFullProfile(container) {
     const isVerified = verifiedUsersList.includes(target.toLowerCase());
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
     
-    // Admin check
+    // VERIFICAR SI SOY ADMIN
     const amIAdmin = allUsersMap[myUser]?.role === 'admin';
 
     const isFollowing = myFollowingList.includes(target);
     const followBtnText = isFollowing ? "Dejar de seguir" : "Seguir";
     const btnStyle = isFollowing ? "background-color: #555;" : ""; 
-
-    const userStatus = ud.status && ud.status.trim() !== "" 
-        ? `<div class="status-pill">${ud.status}</div>` 
-        : '';
+    const userStatus = ud.status && ud.status.trim() !== "" ? `<div class="status-pill">${ud.status}</div>` : '';
     
-    // BOTONES DE ACCIÓN (Seguir, Reportar, Banear)
+    // LÓGICA DE BOTONES (Editar vs Seguir/Reportar/Banear)
     let actionButtons = '';
     if (isMe) {
         actionButtons = `<button onclick="openEditProfileModal()">Editar perfil</button>`;
@@ -343,6 +339,21 @@ function renderFullProfile(container) {
     container.appendChild(header);
     allThreadsData.forEach(([k, t]) => { if(t.username === target) renderThread(k, t, container); });
 }
+
+// --- UTILIDADES DE VISUALIZACIÓN ---
+window.toggleMiniMenu = function(element) {
+    document.querySelectorAll('.mini-action-menu.show').forEach(el => {
+        if(el !== element.querySelector('.mini-action-menu')) el.classList.remove('show');
+    });
+    const menu = element.querySelector('.mini-action-menu');
+    if(menu) menu.classList.toggle('show');
+}
+document.addEventListener('click', function(e) {
+    if(!e.target.closest('.avatar-wrapper')) {
+        document.querySelectorAll('.mini-action-menu.show').forEach(el => el.classList.remove('show'));
+    }
+});
+
 function renderPostList(container, isSearch) {
     const filtered = allThreadsData.filter(([k, t]) => {
         if (!isSearch) return true;
@@ -378,6 +389,7 @@ function renderUserSearch(container) {
         container.appendChild(div);
     });
 }
+
 function renderActivity(container) {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) { container.innerHTML = '<p style="text-align:center; padding:30px;">Inicia sesión.</p>'; return; }
@@ -393,60 +405,26 @@ function renderActivity(container) {
         });
     } else { container.innerHTML += '<p style="text-align:center; padding:40px; color:#555;">Sin actividad.</p>'; }
 }
-// --- EDICIÓN PERFIL (15 DÍAS) ---
-window.openEditProfileModal = function() {
-    const d = allUsersMap[localStorage.getItem('savedRobloxUser')] || {};
-    document.getElementById('editAvatarPreview').src = d.avatar || DEFAULT_AVATAR;
-    document.getElementById('editNameInput').value = d.displayName || "";
-    document.getElementById('editHandleInput').value = d.customHandle || "";
-    document.getElementById('editBioInput').value = d.bio || "";
-    document.getElementById('editStatusInput').value = d.status || "";
-    const modal = document.getElementById('editProfileModal') || document.getElementById('editModal');
-    if(modal) modal.style.display = 'block';
+// --- SISTEMA DE BANEO (DISEÑO MEJORADO) ---
+window.banUser = function(targetUser) {
+    // Usamos el modal gris oscuro en vez del alert feo
+    showConfirm(`¿Esta seguro que quiere banear esta cuenta?`, () => {
+        const updates = {};
+        updates[`users/${targetUser}/isBanned`] = true;
+        
+        update(ref(db), updates)
+            .then(() => showToast(`${targetUser} ha sido baneado.`, "success"))
+            .catch(e => showToast("Error al banear", "error"));
+    });
 };
 
-window.saveProfileChanges = async function() {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    const ud = allUsersMap[myUser] || {};
-    const now = Date.now();
-    const gap = 15 * 24 * 60 * 60 * 1000; // 15 días
-
-    if (ud.lastProfileUpdate && (now - ud.lastProfileUpdate < gap)) {
-        const left = Math.ceil((gap - (now - ud.lastProfileUpdate)) / (1000*60*60*24));
-        const newName = document.getElementById('editNameInput').value;
-        const newHandle = document.getElementById('editHandleInput').value;
-        if (newName !== ud.displayName || newHandle !== ud.customHandle) {
-            return showToast(`Espera ${left} días para cambiar tus nombres.`, "error");
-        }
-    }
-
-    const btn = document.getElementById('saveProfileBtn');
-    btn.innerText = "Guardando...";
-    const updates = {
-        [`users/${myUser}/displayName`]: document.getElementById('editNameInput').value,
-        [`users/${myUser}/customHandle`]: document.getElementById('editHandleInput').value,
-        [`users/${myUser}/bio`]: document.getElementById('editBioInput').value,
-        [`users/${myUser}/status`]: document.getElementById('editStatusInput').value,
-        [`users/${myUser}/lastProfileUpdate`]: now
-    };
-    try { 
-        await update(ref(db), updates); 
-        showToast("Perfil actualizado", "success"); 
-        const modal = document.getElementById('editProfileModal') || document.getElementById('editModal');
-        if(modal) modal.style.display = 'none';
-    } 
-    catch(e) { showToast("Error al guardar", "error"); }
-    finally { btn.innerText = "GUARDAR CAMBIOS"; }
-};
-
-// --- SISTEMA DE REPORTES Y BANEO ---
+// --- SISTEMA DE REPORTES ---
 window.reportUser = function(targetUser) {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return showToast("Inicia sesión primero", "error");
     if (myUser === targetUser) return showToast("No puedes reportarte a ti mismo", "error");
 
     userBeingReported = targetUser;
-    
     const nameLabel = document.getElementById('reportTargetName');
     if(nameLabel) nameLabel.innerText = `Reportando a: ${targetUser}`;
     
@@ -470,35 +448,95 @@ window.submitReportAction = function() {
     
     push(ref(db, 'reports'), reportData)
         .then(() => {
-            showToast("Reporte enviado. Gracias.", "success");
+            showToast("Reporte enviado.", "success");
             document.getElementById('reportModal').style.display = 'none';
             userBeingReported = '';
         })
-        .catch(() => showToast("Error al enviar reporte", "error"));
+        .catch(() => showToast("Error", "error"));
 };
 
-window.banUser = function(targetUser) {
-    if(!confirm(`¿ESTÁS SEGURO de banear a ${targetUser}?`)) return;
-
-    const updates = {};
-    updates[`users/${targetUser}/isBanned`] = true;
+// --- PANEL ADMIN (Abrir) ---
+window.openAdminPanel = function() {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!allUsersMap[myUser] || allUsersMap[myUser].role !== 'admin') {
+        return showToast("Acceso denegado.", "error");
+    }
+    const modal = document.getElementById('adminModal');
+    const container = document.getElementById('adminReportsList');
+    if(modal) modal.style.display = 'block';
     
-    update(ref(db), updates)
-        .then(() => showToast(`${targetUser} ha sido baneado.`, "success"))
-        .catch(e => showToast("Error al banear", "error"));
+    get(child(ref(db), 'reports')).then((snapshot) => {
+        if (snapshot.exists()) {
+            const reports = snapshot.val();
+            container.innerHTML = ''; 
+            Object.entries(reports).forEach(([key, r]) => {
+                const date = new Date(r.timestamp).toLocaleDateString();
+                const div = document.createElement('div');
+                div.style.cssText = "background:#333; margin-bottom:10px; padding:10px; border-radius:8px; border:1px solid #555;";
+                div.innerHTML = `
+                    <div style="font-size:0.9em; color:#aaa; margin-bottom:5px;">${date} | De: <strong>${r.reportedBy}</strong></div>
+                    <div style="color:white; font-weight:bold;">Reportado: <span style="color:#ff4d4d;">${r.reportedUser}</span></div>
+                    <div style="background:#222; padding:5px; border-radius:4px; font-size:0.9em; margin:5px 0;">Motivo: ${r.reason}</div>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="deleteReport('${key}')" style="background:#555; font-size:0.8em;">Descartar</button>
+                        <button onclick="banUserFromPanel('${r.reportedUser}', '${key}')" style="background:#cc0000; font-size:0.8em;">BANEAR</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        } else { container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Sin reportes.</p>'; }
+    });
 };
-// ------------------------------------
+window.deleteReport = function(k) { set(ref(db, `reports/${k}`), null).then(() => { showToast("Reporte borrado", "success"); openAdminPanel(); }); };
+window.banUserFromPanel = function(u, k) { window.banUser(u); set(ref(db, `reports/${k}`), null); setTimeout(() => openAdminPanel(), 1000); };
+
+// --- EDICIÓN PERFIL ---
+window.openEditProfileModal = function() {
+    const d = allUsersMap[localStorage.getItem('savedRobloxUser')] || {};
+    document.getElementById('editAvatarPreview').src = d.avatar || DEFAULT_AVATAR;
+    document.getElementById('editNameInput').value = d.displayName || "";
+    document.getElementById('editHandleInput').value = d.customHandle || "";
+    document.getElementById('editBioInput').value = d.bio || "";
+    document.getElementById('editStatusInput').value = d.status || "";
+    const modal = document.getElementById('editProfileModal') || document.getElementById('editModal');
+    if(modal) modal.style.display = 'block';
+};
+
+window.saveProfileChanges = async function() {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    const ud = allUsersMap[myUser] || {};
+    const now = Date.now();
+    const gap = 15 * 24 * 60 * 60 * 1000; 
+    if (ud.lastProfileUpdate && (now - ud.lastProfileUpdate < gap)) {
+        const left = Math.ceil((gap - (now - ud.lastProfileUpdate)) / (1000*60*60*24));
+        const newName = document.getElementById('editNameInput').value;
+        const newHandle = document.getElementById('editHandleInput').value;
+        if (newName !== ud.displayName || newHandle !== ud.customHandle) {
+            return showToast(`Espera ${left} días para cambiar tus nombres.`, "error");
+        }
+    }
+    const btn = document.getElementById('saveProfileBtn');
+    btn.innerText = "Guardando...";
+    const updates = {
+        [`users/${myUser}/displayName`]: document.getElementById('editNameInput').value,
+        [`users/${myUser}/customHandle`]: document.getElementById('editHandleInput').value,
+        [`users/${myUser}/bio`]: document.getElementById('editBioInput').value,
+        [`users/${myUser}/status`]: document.getElementById('editStatusInput').value,
+        [`users/${myUser}/lastProfileUpdate`]: now
+    };
+    try { await update(ref(db), updates); showToast("Perfil actualizado", "success"); document.getElementById('editProfileModal').style.display='none'; } 
+    catch(e) { showToast("Error", "error"); }
+    finally { btn.innerText = "GUARDAR CAMBIOS"; }
+};
 
 window.toggleFollow = function(target) {
     const me = localStorage.getItem('savedRobloxUser');
     if(!me) { showToast("Regístrate primero", "error"); return; }
     if(me === target) return;
-    
     const isFollowing = myFollowingList.includes(target);
     const updates = {};
     const myFollowingCount = allUsersMap[me]?.followingCount || 0;
     const targetFollowersCount = allUsersMap[target]?.followersCount || 0;
-
     if (isFollowing) {
         updates[`users/${me}/following/${target}`] = null; 
         updates[`users/${target}/followers/${me}`] = null;
@@ -523,11 +561,7 @@ window.loginSystem = async function() {
         const s = await get(child(usersRef, u));
         if (s.exists()) {
             const userData = s.val();
-            // CHECK DE BANEO
-            if (userData.isBanned === true) {
-                return showToast("CUENTA SUSPENDIDA.", "error");
-            }
-
+            if (userData.isBanned === true) { return showToast("tu cuenta ha sido suspendida", "error"); }
             if (userData.pin == p) {
                 localStorage.setItem('savedRobloxUser', u);
                 localStorage.setItem('userId', 'res_' + u);
@@ -544,23 +578,15 @@ window.registerSystem = async function() {
     try {
         const s = await get(child(usersRef, u));
         if (s.exists()) return showToast("Ya existe", "error");
-        await set(child(usersRef, u), { 
-            pin: p, displayName: u, customHandle: u, 
-            registeredAt: Date.now(), followersCount: 0, followingCount: 0 
-        });
+        await set(child(usersRef, u), { pin: p, displayName: u, customHandle: u, registeredAt: Date.now(), followersCount: 0, followingCount: 0 });
         localStorage.setItem('savedRobloxUser', u);
         window.location.reload();
     } catch(e) { showToast("Error al registrar", "error"); }
 };
 
-window.logoutSystem = () => showConfirm("¿Cerrar sesión?", () => { 
-    localStorage.clear(); 
-    window.location.reload(); 
-});
-
+window.logoutSystem = () => showConfirm("¿Cerrar sesión?", () => { localStorage.clear(); window.location.reload(); });
 const searchIn = document.getElementById('searchInput');
 if(searchIn) searchIn.oninput = (e) => { searchTerm = e.target.value.trim(); renderCurrentView(); };
-
 window.toggleLike = (k, c, b) => {
     const u = localStorage.getItem('savedRobloxUser');
     if(!u) return showToast("Inicia sesión", "error");
@@ -568,7 +594,6 @@ window.toggleLike = (k, c, b) => {
     const isL = b.querySelector('i').classList.contains('fas');
     update(ref(db), { [`threads/${k}/likeCount`]: isL ? c - 1 : c + 1, [`threads/${k}/likes/${id}`]: isL ? null : true });
 };
-
 const avatarInput = document.getElementById('avatarUpload');
 if(avatarInput) {
     avatarInput.onchange = async function() {
@@ -584,10 +609,9 @@ if(avatarInput) {
             await update(ref(db, `users/${user}`), { avatar: data.secure_url });
             document.getElementById('editAvatarPreview').src = data.secure_url;
             showToast("Avatar actualizado", "success");
-        } catch(e) { showToast("Error al subir", "error"); }
+        } catch(e) { showToast("Error", "error"); }
     };
 }
-
 window.openComments = (key) => {
     const modal = document.getElementById('commentsModal');
     const list = document.getElementById('commentsList');
@@ -604,7 +628,6 @@ window.openComments = (key) => {
         });
         else list.innerHTML = '<p style="text-align:center; color:#777;">Sin comentarios.</p>';
     });
-    
     const cForm = document.getElementById('commentForm');
     const newForm = cForm.cloneNode(true);
     cForm.parentNode.replaceChild(newForm, cForm);
@@ -612,24 +635,18 @@ window.openComments = (key) => {
         e.preventDefault();
         const u = localStorage.getItem('savedRobloxUser');
         if(!u) return showToast("Inicia sesión", "error");
-        push(ref(db, `threads/${key}/comments`), { 
-            text: document.getElementById('commentInput').value, 
-            username: u, timestamp: Date.now() 
-        });
+        push(ref(db, `threads/${key}/comments`), { text: document.getElementById('commentInput').value, username: u, timestamp: Date.now() });
         document.getElementById('commentInput').value = '';
     };
 };
-
 const form = document.getElementById('newThreadForm');
 if(form) {
     form.onsubmit = async (e) => {
         e.preventDefault();
         const user = localStorage.getItem('savedRobloxUser');
         if(!user) return showToast("Inicia sesión", "error");
-        
         const btn = document.getElementById('submitBtn');
         btn.disabled = true; btn.innerText = "Subiendo...";
-        
         let imgs = [];
         const files = document.getElementById('imageFile').files;
         for (let i = 0; i < files.length; i++) {
@@ -642,28 +659,17 @@ if(form) {
                 imgs.push(data.secure_url);
             } catch(err) { console.error(err); }
         }
-
-        const post = {
-            title: document.getElementById('title').value,
-            description: document.getElementById('description').value,
-            category: document.getElementById('categorySelect').value,
-            username: user,
-            images: imgs, 
-            image: imgs.length > 0 ? imgs[0] : "",
-            timestamp: Date.now(),
-            displayDate: new Date().toLocaleDateString('es-ES'),
-            likeCount: 0
-        };
+        const post = { title: document.getElementById('title').value, description: document.getElementById('description').value, category: document.getElementById('categorySelect').value, username: user, images: imgs, image: imgs.length > 0 ? imgs[0] : "", timestamp: Date.now(), displayDate: new Date().toLocaleDateString('es-ES'), likeCount: 0 };
         await push(threadsRef, post);
         form.reset();
         document.getElementById('fileName').textContent = "";
-        const modal = document.getElementById('newThreadModal'); 
-        if(modal) modal.style.display = 'none';
+        closeModal('newThreadModalContent');
         showToast("Publicado", "success");
         btn.disabled = false; btn.innerText = "PUBLICAR";
         changeSection('Home');
     };
 }
+
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     const user = localStorage.getItem('savedRobloxUser');
@@ -674,9 +680,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const lastSection = localStorage.getItem('lastSection') || 'Home';
     if (lastSection === 'Perfil') {
         const savedProfile = localStorage.getItem('lastVisitedProfile');
-        if (savedProfile) {
-            viewingUserProfile = savedProfile;
-        } else {
+        if (savedProfile) { viewingUserProfile = savedProfile; } 
+        else {
             if (user) viewingUserProfile = ''; 
             else { changeSection('Home'); return; }
         }
