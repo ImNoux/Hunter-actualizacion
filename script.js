@@ -1,6 +1,7 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, get, child, set, increment } from "https://esm.sh/firebase/database";
 
+// --- CONFIGURACIÓN ---
 const DEFAULT_AVATAR = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
 
 const firebaseConfig = {
@@ -27,7 +28,9 @@ let verifiedUsersList = [];
 let allUsersMap = {}; 
 let myFollowingList = []; 
 let myBlockedList = []; // NUEVO: Lista de bloqueados
-let userBeingReported = '';
+let userBeingReported = ''; 
+let postBeingReported = null; // NUEVO: ID del post reportado
+// --- UTILIDADES ---
 window.showToast = function(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if(!container) return;
@@ -70,24 +73,20 @@ function formatCount(num) {
     return num;
 }
 
-// --- NUEVO: FORMATO DE TIEMPO RELATIVO (Hace 5 min, 1h, etc) ---
+// NUEVO: FORMATO DE TIEMPO RELATIVO (Hace 5 min, 1h, etc)
 function formatTimeAgo(timestamp) {
     if (!timestamp) return "";
     const now = Date.now();
-    const diff = Math.floor((now - timestamp) / 1000); // Diferencia en segundos
+    const diff = Math.floor((now - timestamp) / 1000); 
 
     if (diff < 60) return "hace un momento";
-    
     const minutes = Math.floor(diff / 60);
     if (minutes < 60) return `${minutes} min`;
-    
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours} h`;
-    
     const days = Math.floor(hours / 24);
     if (days < 7) return `${days} d`;
     
-    // Si es más de una semana, muestra la fecha
     const date = new Date(timestamp);
     return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
@@ -101,11 +100,13 @@ window.getUserId = function() {
     return userId;
 }
 
+// --- LISTENERS ---
 function initFirebaseListener() {
     onValue(usersRef, (snap) => { 
         allUsersMap = snap.val() || {}; 
         const myUser = localStorage.getItem('savedRobloxUser');
         
+        // 1. Check Baneo
         if (myUser && allUsersMap[myUser] && allUsersMap[myUser].isBanned === true) {
             showToast("tu cuenta ha sido suspendida", "error");
             localStorage.clear();
@@ -113,7 +114,7 @@ function initFirebaseListener() {
             return;
         }
 
-        // Cargar botones Admin
+        // 2. Check Admin (Botón del menú)
         const btnAdmin = document.getElementById('btnAdminPanel');
         if(btnAdmin) {
             if(myUser && allUsersMap[myUser] && allUsersMap[myUser].role === 'admin') {
@@ -121,7 +122,7 @@ function initFirebaseListener() {
             } else { btnAdmin.style.display = 'none'; }
         }
 
-        // Cargar Listas (Seguidos y Bloqueados)
+        // 3. Cargar Listas (Seguidos y Bloqueados)
         if (myUser && allUsersMap[myUser]) {
             myFollowingList = allUsersMap[myUser].following ? Object.keys(allUsersMap[myUser].following) : [];
             myBlockedList = allUsersMap[myUser].blocked ? Object.keys(allUsersMap[myUser].blocked) : [];
@@ -144,6 +145,7 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 }
+// --- NAVEGACIÓN ---
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
     localStorage.setItem('lastSection', sectionName);
@@ -214,12 +216,11 @@ function renderThread(key, thread, container) {
     
     const isMe = (myUser === authorName);
     const isFollowing = myFollowingList.includes(authorName);
-    const timeAgo = formatTimeAgo(thread.timestamp); // USAR TIEMPO RELATIVO
+    const timeAgo = formatTimeAgo(thread.timestamp); // Usamos la nueva función
     
-    // Avatar y Header
+    // Avatar
     let avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
     if (!isMe && myUser && !isFollowing) {
-        // Lógica del mini-menú del avatar (Seguir)
         avatarHTML = `
         <div class="avatar-wrapper" onclick="toggleMiniMenu(this)">
             <img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small">
@@ -232,7 +233,6 @@ function renderThread(key, thread, container) {
     }
 
     // MENÚ DE OPCIONES (3 PUNTOS)
-    // Solo si no soy yo
     let optionsMenuHTML = '';
     if (!isMe && myUser) {
         optionsMenuHTML = `
@@ -242,7 +242,7 @@ function renderThread(key, thread, container) {
                 <div class="post-option-item" onclick="copyPostLink('${key}')">
                     <span>Copiar enlace</span> <i class="fas fa-link"></i>
                 </div>
-                <div class="post-option-item" onclick="reportUser('${authorName}')">
+                <div class="post-option-item" onclick="reportPost('${key}', '${authorName}')">
                     <span>Denunciar</span> <i class="fas fa-exclamation-circle" style="color:#ff4d4d;"></i>
                 </div>
                 <div class="post-option-item danger" onclick="blockUser('${authorName}')">
@@ -251,7 +251,6 @@ function renderThread(key, thread, container) {
             </div>
         </div>`;
     } else {
-        // Si soy yo, quizás opción de eliminar (podríamos añadir después)
         optionsMenuHTML = `<div class="post-header-right"><span class="time-display">${timeAgo}</span></div>`; 
     }
 
@@ -265,7 +264,8 @@ function renderThread(key, thread, container) {
     }
 
     const userId = getUserId();
-    const isLiked = (thread.likes || {})[userId] ? 'liked' : '';
+    const likes = thread.likes || {};
+    const isLiked = likes[userId] ? 'liked' : '';
     const commentCount = thread.comments ? Object.keys(thread.comments).length : 0;
 
     div.innerHTML = `
@@ -301,9 +301,8 @@ function renderThread(key, thread, container) {
     container.appendChild(div);
 }
 
-// FUNCIONES DEL MENÚ DE POSTS
+// FUNCIONES DEL MENÚ
 window.togglePostOptions = function(key) {
-    // Cerrar otros abiertos
     document.querySelectorAll('.post-options-dropdown.show').forEach(el => {
         if(el.id !== `opts-${key}`) el.classList.remove('show');
     });
@@ -311,7 +310,6 @@ window.togglePostOptions = function(key) {
     if(menu) menu.classList.toggle('show');
 };
 
-// Cerrar menús al hacer click fuera
 window.addEventListener('click', function(e) {
     if (!e.target.closest('.post-header-right')) {
         document.querySelectorAll('.post-options-dropdown.show').forEach(el => el.classList.remove('show'));
@@ -319,9 +317,22 @@ window.addEventListener('click', function(e) {
 });
 
 window.copyPostLink = function(key) {
-    const link = `${window.location.origin}/#post_${key}`; // Simulación de link
-    navigator.clipboard.writeText(link).then(() => showToast("Enlace copiado al portapapeles", "success"));
+    const link = `${window.location.origin}/#post_${key}`;
+    navigator.clipboard.writeText(link).then(() => showToast("Enlace copiado", "success"));
 };
+window.toggleMiniMenu = function(element) {
+    document.querySelectorAll('.mini-action-menu.show').forEach(el => {
+        if(el !== element.querySelector('.mini-action-menu')) el.classList.remove('show');
+    });
+    const menu = element.querySelector('.mini-action-menu');
+    if(menu) menu.classList.toggle('show');
+}
+document.addEventListener('click', function(e) {
+    if(!e.target.closest('.avatar-wrapper')) {
+        document.querySelectorAll('.mini-action-menu.show').forEach(el => el.classList.remove('show'));
+    }
+});
+
 function renderFullProfile(container) {
     const target = viewingUserProfile || localStorage.getItem('savedRobloxUser');
     if (!target) return showToast("Inicia sesión", "error");
@@ -333,8 +344,6 @@ function renderFullProfile(container) {
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
     const amIAdmin = allUsersMap[myUser]?.role === 'admin';
     const isBanned = ud.isBanned === true;
-    
-    // Check si lo tengo bloqueado
     const isBlockedByMe = myBlockedList.includes(target);
 
     let displayNameToShow = ud.displayName || target;
@@ -358,8 +367,6 @@ function renderFullProfile(container) {
         if (amIAdmin && isBanned) {
             actionButtons = `<button onclick="unbanUser('${target}')" style="background:#00e676; width:100%; font-weight:bold;">DESBANEAR USUARIO</button>`;
         } else if (!isBanned) {
-            // USUARIO NORMAL ACTIVO
-            // Si lo tengo bloqueado, mostrar botón DESBLOQUEAR
             if (isBlockedByMe) {
                 actionButtons = `<button onclick="unblockUser('${target}')" style="background:#555; width:100%;">Desbloquear</button>`;
             } else {
@@ -415,10 +422,7 @@ function renderFullProfile(container) {
 function renderPostList(container, isSearch) {
     const filtered = allThreadsData.filter(([k, t]) => {
         const author = allUsersMap[t.username];
-        // 1. Ocultar si está baneado globalmente
         if (author && author.isBanned === true) return false; 
-        
-        // 2. Ocultar si YO lo tengo bloqueado
         if (myBlockedList.includes(t.username)) return false;
 
         if (!isSearch) return true;
@@ -443,22 +447,16 @@ function renderUserSearch(container) {
         (allUsersMap[u].displayName && allUsersMap[u].displayName.toLowerCase().includes(term))
     ).forEach(username => {
         const uData = allUsersMap[username];
-        
         let displayName = uData.displayName || username;
         let avatar = uData.avatar || DEFAULT_AVATAR;
         const isVerified = verifiedUsersList.includes(username.toLowerCase());
         const verifIcon = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
 
-        // Filtro Baneados
         if (uData.isBanned === true) {
             if (amIAdmin) displayName += " (BANEADO)";
             else { displayName = "Usuario Eliminado"; avatar = DEFAULT_AVATAR; }
         }
-        
-        // Filtro Bloqueados
-        if (myBlockedList.includes(username)) {
-            displayName += " (Bloqueado)";
-        }
+        if (myBlockedList.includes(username)) displayName += " (Bloqueado)";
 
         const div = document.createElement('div');
         div.className = 'user-search-result';
@@ -527,59 +525,57 @@ window.saveProfileChanges = async function() {
     finally { btn.innerText = "GUARDAR CAMBIOS"; }
 };
 
-// --- SISTEMA BLOQUEO PERSONAL ---
+// --- BLOQUEO PERSONAL ---
 window.blockUser = function(targetUser) {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return;
-    
-    showConfirm(`¿Bloquear a ${targetUser}? No verás sus publicaciones.`, () => {
+    showConfirm(`¿Bloquear a ${targetUser}?`, () => {
         const updates = {};
         updates[`users/${myUser}/blocked/${targetUser}`] = true;
-        // Opcional: Dejar de seguir automáticamente
         updates[`users/${myUser}/following/${targetUser}`] = null;
         updates[`users/${targetUser}/followers/${myUser}`] = null;
-        
-        update(ref(db), updates)
-            .then(() => {
-                showToast("Usuario bloqueado.", "success");
-                renderCurrentView(); // Recargar para ocultar sus posts
-            });
+        update(ref(db), updates).then(() => { showToast("Bloqueado.", "success"); renderCurrentView(); });
     });
 };
 
 window.unblockUser = function(targetUser) {
     const myUser = localStorage.getItem('savedRobloxUser');
     showConfirm(`¿Desbloquear a ${targetUser}?`, () => {
-        set(ref(db, `users/${myUser}/blocked/${targetUser}`), null)
-            .then(() => {
-                showToast("Usuario desbloqueado.", "success");
-                renderCurrentView();
-            });
+        set(ref(db, `users/${myUser}/blocked/${targetUser}`), null).then(() => { showToast("Desbloqueado.", "success"); renderCurrentView(); });
     });
 };
 
-// --- REPORTES Y ADMIN ---
+// --- REPORTES ---
 window.reportUser = function(targetUser) {
+    userBeingReported = targetUser;
+    postBeingReported = null; 
+    openReportModal(targetUser);
+};
+
+window.reportPost = function(postKey, authorName) {
+    userBeingReported = authorName;
+    postBeingReported = postKey; // Guardamos ID
+    openReportModal(authorName, true);
+};
+
+function openReportModal(target, isPost = false) {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return showToast("Inicia sesión primero", "error");
-    if (myUser === targetUser) return showToast("No puedes reportarte a ti mismo", "error");
-
-    userBeingReported = targetUser;
+    if (myUser === target) return showToast("No puedes reportarte", "error");
     const nameLabel = document.getElementById('reportTargetName');
-    if(nameLabel) nameLabel.innerText = `Reportando a: ${targetUser}`;
-    
-    const modal = document.getElementById('reportModal');
-    if(modal) modal.style.display = 'block';
-};
+    if(nameLabel) nameLabel.innerText = isPost ? `Reportando publicación de: ${target}` : `Reportando a: ${target}`;
+    document.getElementById('reportModal').style.display = 'block';
+}
 
 window.submitReportAction = function() {
     const reason = document.getElementById('reportReasonSelect').value;
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!userBeingReported) return;
-    const reportData = { reportedUser: userBeingReported, reportedBy: myUser, reason: reason, timestamp: Date.now(), status: 'pending' };
-    push(ref(db, 'reports'), reportData).then(() => { showToast("Reporte enviado.", "success"); document.getElementById('reportModal').style.display = 'none'; userBeingReported = ''; }).catch(() => showToast("Error", "error"));
+    const reportData = { reportedUser: userBeingReported, reportedBy: myUser, reason: reason, timestamp: Date.now(), status: 'pending', postId: postBeingReported };
+    push(ref(db, 'reports'), reportData).then(() => { showToast("Reporte enviado.", "success"); document.getElementById('reportModal').style.display = 'none'; userBeingReported = ''; postBeingReported = null; }).catch(() => showToast("Error", "error"));
 };
 
+// --- ADMIN ---
 window.banUser = function(targetUser) {
     showConfirm(`¿Esta seguro que quiere banear esta cuenta?`, () => {
         update(ref(db), { [`users/${targetUser}/isBanned`]: true })
@@ -609,14 +605,17 @@ window.openAdminPanel = function() {
             container.innerHTML = ''; 
             Object.entries(reports).forEach(([key, r]) => {
                 const date = new Date(r.timestamp).toLocaleDateString();
+                const typeLabel = r.postId ? '<span style="background:#00a2ff; padding:2px 5px; border-radius:4px; font-size:0.8em; color:white;">POST</span>' : '<span style="background:#555; padding:2px 5px; border-radius:4px; font-size:0.8em; color:white;">USUARIO</span>';
+                const deletePostBtn = r.postId ? `<button onclick="deletePostFromPanel('${r.postId}', '${key}')" style="background:#ff9800; font-size:0.8em;">BORRAR POST</button>` : '';
                 const div = document.createElement('div');
                 div.style.cssText = "background:#333; margin-bottom:10px; padding:10px; border-radius:8px; border:1px solid #555;";
                 div.innerHTML = `
-                    <div style="font-size:0.9em; color:#aaa; margin-bottom:5px;">${date} | De: <strong>${r.reportedBy}</strong></div>
+                    <div style="font-size:0.9em; color:#aaa; margin-bottom:5px;">${date} | ${typeLabel} | De: <strong>${r.reportedBy}</strong></div>
                     <div style="color:white; font-weight:bold;">Reportado: <span style="color:#ff4d4d;">${r.reportedUser}</span></div>
                     <div style="background:#222; padding:5px; border-radius:4px; font-size:0.9em; margin:5px 0;">Motivo: ${r.reason}</div>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:5px; flex-wrap:wrap;">
                         <button onclick="deleteReport('${key}')" style="background:#555; font-size:0.8em;">Descartar</button>
+                        ${deletePostBtn}
                         <button onclick="banUserFromPanel('${r.reportedUser}', '${key}')" style="background:#cc0000; font-size:0.8em;">BANEAR</button>
                     </div>
                 `;
@@ -625,9 +624,12 @@ window.openAdminPanel = function() {
         } else { container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Sin reportes.</p>'; }
     });
 };
+
 window.deleteReport = function(k) { set(ref(db, `reports/${k}`), null).then(() => { showToast("Reporte borrado", "success"); openAdminPanel(); }); };
 window.banUserFromPanel = function(u, k) { window.banUser(u); set(ref(db, `reports/${k}`), null); setTimeout(() => openAdminPanel(), 1000); };
+window.deletePostFromPanel = function(pid, rid) { showConfirm("¿Eliminar publicación?", () => { set(ref(db, `threads/${pid}`), null); set(ref(db, `reports/${rid}`), null); showToast("Eliminado", "success"); setTimeout(() => openAdminPanel(), 1000); }); };
 
+// --- ACCIONES DE USUARIO ---
 window.toggleFollow = function(target) {
     const me = localStorage.getItem('savedRobloxUser');
     if(!me) { showToast("Regístrate primero", "error"); return; }
