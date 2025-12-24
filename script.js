@@ -60,26 +60,17 @@ function makeLinksClickable(text) {
     return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" style="color:#00a2ff; text-decoration:underline;">${url}</a>`);
 }
 
-// --- NUEVO FORMATO INTELIGENTE (Soluciona el "1000 mil") ---
+// --- NUEVO FORMATO INTELIGENTE ---
 function formatCount(num) {
     if (!num) return 0;
-    
-    // Si ya es 1 millón o más
     if (num >= 1000000) {
         return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' mill.';
     }
-    
-    // Si es miles (ej: 1000 a 999,999)
     if (num >= 1000) {
-        // Calculamos cómo se vería en miles
         let val = (num / 1000).toFixed(1).replace(/\.0$/, '');
-        
-        // AQUÍ ESTÁ EL TRUCO: Si el redondeo nos da "1000", lo cambiamos a "1 mill."
         if (val === '1000') return '1 mill.';
-        
         return val + ' mil';
     }
-    
     return num;
 }
 
@@ -117,11 +108,23 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 }
-// --- NAVEGACIÓN ---
+// --- NAVEGACIÓN Y GESTOS (MODIFICADO) ---
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
     localStorage.setItem('lastSection', sectionName);
-    if(sectionName !== 'Perfil') localStorage.removeItem('lastVisitedProfile');
+    
+    // 1. Lógica del historial para el botón "Atrás"
+    if (sectionName !== 'Home') {
+        history.pushState({ section: sectionName }, "", "#" + sectionName);
+    } else {
+        history.replaceState(null, "", " ");
+    }
+
+    // 2. Limpieza de perfil visitado si salimos de "Perfil"
+    if(sectionName !== 'Perfil') {
+        localStorage.removeItem('lastVisitedProfile');
+        viewingUserProfile = ''; 
+    }
     
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const sc = document.getElementById('searchContainer');
@@ -138,9 +141,36 @@ window.changeSection = function(sectionName) {
     if(sectionName === 'Home') window.scrollTo(0,0);
 };
 
+// --- EVENTO BOTÓN ATRÁS (NUEVO) ---
+window.onpopstate = function(event) {
+    if (currentSection !== 'Home') {
+        currentSection = 'Home';
+        localStorage.setItem('lastSection', 'Home');
+        localStorage.removeItem('lastVisitedProfile');
+        viewingUserProfile = '';
+        
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        const homeNav = document.getElementById('nav-home');
+        if(homeNav) homeNav.classList.add('active');
+        
+        const sc = document.getElementById('searchContainer');
+        if(sc) sc.style.display = 'none';
+        
+        renderCurrentView();
+        window.scrollTo(0,0);
+    }
+};
+
 window.openMyProfile = function() {
     viewingUserProfile = ''; 
     localStorage.removeItem('lastVisitedProfile'); 
+    changeSection('Perfil'); 
+};
+
+// --- MODIFICADO: ABRIR PERFIL (Guarda la visita) ---
+window.openFullProfile = (u) => { 
+    viewingUserProfile = u; 
+    localStorage.setItem('lastVisitedProfile', u); // <--- Guarda ID para recarga
     changeSection('Perfil'); 
 };
 
@@ -159,19 +189,14 @@ function renderCurrentView() {
     renderPostList(container, false);
 }
 
-// --- FUNCIÓN CONTADOR FOTOS ---
 window.updateImageCounter = function(carousel) {
     const width = carousel.offsetWidth;
     const currentIndex = Math.round(carousel.scrollLeft / width) + 1;
     const totalImages = carousel.childElementCount;
-    
     const badge = carousel.parentElement.querySelector('.image-counter-badge');
-    if(badge) {
-        badge.innerText = `${currentIndex}/${totalImages}`;
-    }
+    if(badge) badge.innerText = `${currentIndex}/${totalImages}`;
 };
 
-// --- RENDERIZADO DE POSTS ---
 function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.className = 'thread';
@@ -179,12 +204,8 @@ function renderThread(key, thread, container) {
     const authorName = thread.username || "Desconocido";
     const authorData = allUsersMap[authorName] || {};
     const myUser = localStorage.getItem('savedRobloxUser');
-    
-    // Verificado
     const isVerified = authorName && verifiedUsersList.includes(authorName.toLowerCase());
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
-    
-    // Avatar + Botón Seguir (Menú)
     const isMe = (myUser === authorName);
     const isFollowing = myFollowingList.includes(authorName);
     
@@ -207,7 +228,6 @@ function renderThread(key, thread, container) {
         avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
     }
     
-    // Carrusel con contador
     let mediaHTML = '';
     if(thread.images && thread.images.length > 1) {
         mediaHTML = `
@@ -244,11 +264,9 @@ function renderThread(key, thread, container) {
             </div>
             <div style="font-size:0.8em; color:#777; margin-left:auto;">${thread.displayDate || ""}</div>
         </div>
-        
         <h3 style="margin:10px 0 5px 0;">${thread.title}</h3>
         <p>${makeLinksClickable(thread.description)}</p>
         ${mediaHTML}
-        
         <div class="thread-actions">
             <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${thread.likeCount||0}, this)">
                 <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${formatCount(thread.likeCount)}
@@ -261,7 +279,6 @@ function renderThread(key, thread, container) {
     container.appendChild(div);
 }
 
-// Menú Avatar
 window.toggleMiniMenu = function(element) {
     document.querySelectorAll('.mini-action-menu.show').forEach(el => {
         if(el !== element.querySelector('.mini-action-menu')) el.classList.remove('show');
@@ -283,11 +300,7 @@ function renderFullProfile(container) {
     const isMe = target === localStorage.getItem('savedRobloxUser');
     const isVerified = verifiedUsersList.includes(target.toLowerCase());
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
-    
-    // Estado flotante
-    const userStatus = ud.status && ud.status.trim() !== "" 
-        ? `<div class="status-pill">${ud.status}</div>` 
-        : '';
+    const userStatus = ud.status && ud.status.trim() !== "" ? `<div class="status-pill">${ud.status}</div>` : '';
     
     const header = document.createElement('div');
     header.className = 'profile-header-container';
@@ -315,7 +328,6 @@ function renderFullProfile(container) {
         ${isMe ? `<button onclick="openEditProfileModal()">Editar perfil</button>` : `<button onclick="toggleFollow('${target}')">Seguir</button>`}
     `;
     container.appendChild(header);
-    
     allThreadsData.forEach(([k, t]) => { if(t.username === target) renderThread(k, t, container); });
 }
 
@@ -330,10 +342,10 @@ function renderPostList(container, isSearch) {
     if (filtered.length) filtered.forEach(([k, t]) => renderThread(k, t, container));
     else container.innerHTML += '<p style="text-align:center; padding:20px; color:#777;">Sin resultados.</p>';
 }
+
 function renderUserSearch(container) {
     if (!searchTerm) { container.innerHTML = '<p style="text-align:center; color:#777; margin-top:20px;">Busca personas...</p>'; return; }
     const term = searchTerm.toLowerCase();
-    
     Object.keys(allUsersMap).filter(u => 
         u.toLowerCase().includes(term) || 
         (allUsersMap[u].displayName && allUsersMap[u].displayName.toLowerCase().includes(term))
@@ -341,7 +353,6 @@ function renderUserSearch(container) {
         const uData = allUsersMap[username];
         const isVerified = verifiedUsersList.includes(username.toLowerCase());
         const verifIcon = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
-        
         const div = document.createElement('div');
         div.className = 'user-search-result';
         div.onclick = () => openFullProfile(username);
@@ -355,7 +366,6 @@ function renderUserSearch(container) {
         container.appendChild(div);
     });
 }
-
 function renderActivity(container) {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) { container.innerHTML = '<p style="text-align:center; padding:30px;">Inicia sesión.</p>'; return; }
@@ -372,7 +382,6 @@ function renderActivity(container) {
     } else { container.innerHTML += '<p style="text-align:center; padding:40px; color:#555;">Sin actividad.</p>'; }
 }
 
-// --- EDICIÓN PERFIL (15 DÍAS) ---
 window.openEditProfileModal = function() {
     const d = allUsersMap[localStorage.getItem('savedRobloxUser')] || {};
     document.getElementById('editAvatarPreview').src = d.avatar || DEFAULT_AVATAR;
@@ -387,18 +396,15 @@ window.saveProfileChanges = async function() {
     const myUser = localStorage.getItem('savedRobloxUser');
     const ud = allUsersMap[myUser] || {};
     const now = Date.now();
-    const gap = 15 * 24 * 60 * 60 * 1000; // 15 días
-
+    const gap = 15 * 24 * 60 * 60 * 1000;
     if (ud.lastProfileUpdate && (now - ud.lastProfileUpdate < gap)) {
         const left = Math.ceil((gap - (now - ud.lastProfileUpdate)) / (1000*60*60*24));
         const newName = document.getElementById('editNameInput').value;
         const newHandle = document.getElementById('editHandleInput').value;
-        
         if (newName !== ud.displayName || newHandle !== ud.customHandle) {
             return showToast(`Espera ${left} días para cambiar tus nombres.`, "error");
         }
     }
-
     const btn = document.getElementById('saveProfileBtn');
     btn.innerText = "Guardando...";
     const updates = {
@@ -408,11 +414,7 @@ window.saveProfileChanges = async function() {
         [`users/${myUser}/status`]: document.getElementById('editStatusInput').value,
         [`users/${myUser}/lastProfileUpdate`]: now
     };
-    try { 
-        await update(ref(db), updates); 
-        showToast("Perfil actualizado", "success"); 
-        closeModal('editProfileModal'); 
-    } 
+    try { await update(ref(db), updates); showToast("Perfil actualizado", "success"); closeModal('editProfileModal'); } 
     catch(e) { showToast("Error al guardar", "error"); }
     finally { btn.innerText = "GUARDAR CAMBIOS"; }
 };
@@ -421,7 +423,6 @@ window.toggleFollow = function(target) {
     const me = localStorage.getItem('savedRobloxUser');
     if(!me) { showToast("Regístrate primero", "error"); return; }
     if(me === target) return;
-    
     const updates = {};
     updates[`users/${me}/following/${target}`] = true; 
     updates[`users/${target}/followers/${me}`] = true;
@@ -450,21 +451,15 @@ window.registerSystem = async function() {
     try {
         const s = await get(child(usersRef, u));
         if (s.exists()) return showToast("Ya existe", "error");
-        await set(child(usersRef, u), { 
-            pin: p, displayName: u, customHandle: u, 
-            registeredAt: Date.now(), followersCount: 0, followingCount: 0 
-        });
+        await set(child(usersRef, u), { pin: p, displayName: u, customHandle: u, registeredAt: Date.now(), followersCount: 0, followingCount: 0 });
         localStorage.setItem('savedRobloxUser', u);
         window.location.reload();
     } catch(e) { showToast("Error al registrar", "error"); }
 };
 
 window.logoutSystem = () => showConfirm("¿Cerrar sesión?", () => { 
-    localStorage.clear(); 
-    window.location.reload(); 
+    localStorage.clear(); window.location.reload(); 
 });
-
-window.openFullProfile = (u) => { viewingUserProfile = u; changeSection('Perfil'); };
 
 const searchIn = document.getElementById('searchInput');
 if(searchIn) searchIn.oninput = (e) => { searchTerm = e.target.value.trim(); renderCurrentView(); };
@@ -520,10 +515,7 @@ window.openComments = (key) => {
         e.preventDefault();
         const u = localStorage.getItem('savedRobloxUser');
         if(!u) return showToast("Inicia sesión", "error");
-        push(ref(db, `threads/${key}/comments`), { 
-            text: document.getElementById('commentInput').value, 
-            username: u, timestamp: Date.now() 
-        });
+        push(ref(db, `threads/${key}/comments`), { text: document.getElementById('commentInput').value, username: u, timestamp: Date.now() });
         document.getElementById('commentInput').value = '';
     };
 };
@@ -534,10 +526,8 @@ if(form) {
         e.preventDefault();
         const user = localStorage.getItem('savedRobloxUser');
         if(!user) return showToast("Inicia sesión", "error");
-        
         const btn = document.getElementById('submitBtn');
         btn.disabled = true; btn.innerText = "Subiendo...";
-        
         let imgs = [];
         const files = document.getElementById('imageFile').files;
         for (let i = 0; i < files.length; i++) {
@@ -550,7 +540,6 @@ if(form) {
                 imgs.push(data.secure_url);
             } catch(err) { console.error(err); }
         }
-
         const post = {
             title: document.getElementById('title').value,
             description: document.getElementById('description').value,
@@ -572,6 +561,7 @@ if(form) {
     };
 }
 
+// --- INICIALIZACIÓN (MODIFICADA PARA RECUPERAR PERFIL) ---
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     const user = localStorage.getItem('savedRobloxUser');
@@ -579,5 +569,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('menuLogin').style.display = 'none'; 
         document.getElementById('menuLogout').style.display = 'block'; 
     }
-    changeSection(localStorage.getItem('lastSection') || 'Home');
+    
+    // Recuperar estado al actualizar
+    const lastSection = localStorage.getItem('lastSection') || 'Home';
+    
+    // Si la última sección fue Perfil, intentamos recuperar a quién veíamos
+    if (lastSection === 'Perfil') {
+        const savedProfile = localStorage.getItem('lastVisitedProfile');
+        if (savedProfile) {
+            viewingUserProfile = savedProfile;
+        } else {
+            // Si no hay perfil guardado, volvemos a Home por seguridad
+            changeSection('Home');
+            return;
+        }
+    }
+    changeSection(lastSection);
 });
