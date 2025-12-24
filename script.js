@@ -451,7 +451,8 @@ window.openFullProfile = function(username) {
     viewingUserProfile = username || localStorage.getItem('savedRobloxUser');
     changeSection('Perfil');
 };
-// --- PARTE 4: INTERACCIONES Y EVENTOS ---
+  
+        // --- PARTE 4: INTERACCIONES Y EVENTOS ---
 
 const searchIn = document.getElementById('searchInput');
 if(searchIn) {
@@ -461,88 +462,41 @@ if(searchIn) {
     };
 }
 
-window.toggleMiniMenu = function(event, menuId) {
-    event.stopPropagation(); 
-    document.querySelectorAll('.mini-menu-dropdown').forEach(m => {
-        if(m.id !== menuId) m.classList.remove('show');
-    });
-    const menu = document.getElementById(menuId);
-    if(menu) menu.classList.toggle('show');
-};
-document.addEventListener('click', function() {
-    document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
-});
-
-window.toggleFollow = function(targetUser) {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if(!myUser) { showToast("Regístrate primero", "error"); return; }
-    if(myUser === targetUser) { showToast("No puedes seguirte a ti mismo", "error"); return; }
+window.toggleFollow = function(target) {
+    const me = localStorage.getItem('savedRobloxUser');
+    if(!me) { showToast("Regístrate primero", "error"); return; }
+    if(me === target) return;
     
-    document.querySelectorAll('.mini-menu-dropdown').forEach(m => m.classList.remove('show'));
-
-    const isFollowing = myFollowingList.includes(targetUser);
+    const isFollowing = myFollowingList.includes(target);
     const updates = {};
-    if (isFollowing) {
-        updates[`users/${myUser}/following/${targetUser}`] = null; 
-        updates[`users/${targetUser}/followers/${myUser}`] = null;
-        updates[`users/${myUser}/followingCount`] = increment(-1);
-        updates[`users/${targetUser}/followersCount`] = increment(-1);
+    if(isFollowing) {
+        updates[`users/${me}/following/${target}`] = null;
+        updates[`users/${target}/followers/${me}`] = null;
+        updates[`users/${me}/followingCount`] = increment(-1);
+        updates[`users/${target}/followersCount`] = increment(-1);
     } else {
-        updates[`users/${myUser}/following/${targetUser}`] = true; 
-        updates[`users/${targetUser}/followers/${myUser}`] = true;
-        updates[`users/${myUser}/followingCount`] = increment(1);
-        updates[`users/${targetUser}/followersCount`] = increment(1);
+        updates[`users/${me}/following/${target}`] = true;
+        updates[`users/${target}/followers/${me}`] = true;
+        updates[`users/${me}/followingCount`] = increment(1);
+        updates[`users/${target}/followersCount`] = increment(1);
     }
-    update(ref(db), updates).then(() => {
-        if(isFollowing) showToast(`Dejaste de seguir a ${targetUser}`);
-        else showToast(`Ahora sigues a ${targetUser}`, "success");
-        if(currentSection === 'Perfil' && viewingUserProfile === targetUser) { setTimeout(renderCurrentView, 100); }
-    }).catch(err => showToast("Error DB", "error"));
-};
-
-const avatarInput = document.getElementById('avatarUpload');
-if(avatarInput) {
-    avatarInput.onchange = async function(e) {
-        if(this.files && this.files.length > 0) {
-            const file = this.files[0];
-            const myUser = localStorage.getItem('savedRobloxUser');
-            if(!myUser) return;
-            
-            showToast("Subiendo foto...", "info");
-
-            const cloudName = 'dmrlmfoip';
-            const uploadPreset = 'comunidad_arc';
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', uploadPreset);
-            try {
-                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
-                const data = await res.json();
-                await update(ref(db, `users/${myUser}`), { avatar: data.secure_url });
-                const preview = document.getElementById('editAvatarPreview');
-                if(preview) preview.src = data.secure_url;
-                
-                showToast("Foto actualizada", "success");
-                renderCurrentView();
-            } catch(err) { console.error(err); showToast("Error al subir imagen", "error"); }
-        }
-    };
-}
-
-window.toggleLike = function(key, currentCount, btn) {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if (!myUser) { showToast("Inicia sesión para dar Like", "error"); return; }
-
-    const userId = getUserId();
-    const liked = btn.classList.contains('liked');
-    const newCount = liked ? currentCount - 1 : currentCount + 1;
-    const updates = {};
-    updates[`threads/${key}/likeCount`] = newCount;
-    updates[`threads/${key}/likes/${userId}`] = liked ? null : true;
     update(ref(db), updates);
 };
 
-// PUBLICAR (LÓGICA ACTUALIZADA PARA NUEVO MODAL)
+window.toggleLike = function(key, count, btn) {
+    if(!localStorage.getItem('savedRobloxUser')) { showToast("Inicia sesión para dar like", "error"); return; }
+    
+    const userId = getUserId();
+    const isLiked = btn.querySelector('i').classList.contains('fas'); // Check visual rápido
+    
+    const updates = {};
+    updates[`threads/${key}/likeCount`] = isLiked ? count - 1 : count + 1;
+    updates[`threads/${key}/likes/${userId}`] = isLiked ? null : true;
+    
+    update(ref(db), updates);
+};
+
+// PUBLICAR
 const form = document.getElementById('newThreadForm');
 if(form) {
     form.onsubmit = async (e) => {
@@ -582,40 +536,74 @@ if(form) {
         document.getElementById('fileName').textContent = "";
         closeModal('newThreadModalContent');
         showToast("Publicado con éxito", "success");
-        btn.disabled = false; btn.innerText = "Publicar";
+        btn.disabled = false; btn.innerText = "PUBLICAR";
         changeSection('Home');
     };
 }
 
-// INICIALIZACIÓN Y APERTURA DE MODAL CON DATOS
+// Avatar Upload
+document.getElementById('avatarUpload').onchange = async function() {
+    const user = localStorage.getItem('savedRobloxUser');
+    if(!user || this.files.length === 0) return;
+    
+    showToast("Subiendo avatar...", "info");
+    const formData = new FormData();
+    formData.append('file', this.files[0]);
+    formData.append('upload_preset', 'comunidad_arc');
+    
+    try {
+        const res = await fetch(`https://api.cloudinary.com/v1_1/dmrlmfoip/auto/upload`, { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        await update(ref(db, `users/${user}`), { avatar: data.secure_url });
+        document.getElementById('editAvatarPreview').src = data.secure_url;
+        showToast("Avatar actualizado", "success");
+    } catch(e) { showToast("Error al subir", "error"); }
+};
+
+// COMENTARIOS
+window.openComments = function(key) {
+    const modal = document.getElementById('commentsModal');
+    const list = document.getElementById('commentsList');
+    list.innerHTML = '<p style="text-align:center; color:#777;">Cargando...</p>';
+    modal.style.display = 'block';
+
+    const commentsRef = ref(db, `threads/${key}/comments`);
+    off(commentsRef);
+    onValue(commentsRef, (snapshot) => {
+        list.innerHTML = '';
+        const data = snapshot.val();
+        if(data) {
+            Object.values(data).forEach(c => {
+                const div = document.createElement('div');
+                div.innerHTML = `<strong>${c.username}:</strong> ${makeLinksClickable(c.text)}`;
+                div.style.padding = "5px 0";
+                div.style.borderBottom = "1px solid #333";
+                list.appendChild(div);
+            });
+        } else { list.innerHTML = '<p style="text-align:center; color:#777;">Sin comentarios aún.</p>'; }
+    });
+
+    const cForm = document.getElementById('commentForm');
+    cForm.onsubmit = (e) => {
+        e.preventDefault();
+        const user = localStorage.getItem('savedRobloxUser');
+        if(!user) { showToast("Inicia sesión para comentar", "error"); return; }
+        
+        const txt = document.getElementById('commentInput').value;
+        push(commentsRef, { text: txt, username: user, timestamp: Date.now() });
+        document.getElementById('commentInput').value = '';
+    };
+};
+
+// INICIALIZACIÓN
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
-    changeSection('Home');
+    changeSection('Home'); // Arrancar en Home
     
     const user = localStorage.getItem('savedRobloxUser');
     if(user) {
         document.getElementById('menuLogin').style.display = 'none';
         document.getElementById('menuLogout').style.display = 'block';
-    }
-
-    // BOTÓN FLOTANTE "NUEVO HILO" (Para actualizar la foto en el modal al abrir)
-    // Buscamos el div contenedor del botón +
-    const btnNewContainer = document.querySelector('.plus-btn-container'); 
-    if(btnNewContainer) {
-        btnNewContainer.onclick = (e) => {
-            e.preventDefault();
-            if(!user) { showToast("Regístrate para publicar", "error"); return; }
-            
-            // Cargar datos del usuario en el modal
-            const myData = allUsersMap[user] || {};
-            const myAvatar = myData.avatar || DEFAULT_AVATAR;
-            const myHandle = myData.customHandle || user;
-
-            document.getElementById('postAvatarPreview').src = myAvatar;
-            document.getElementById('postUserHandle').textContent = myHandle;
-
-            // Abrir modal
-            openModal('newThreadModalContent');
-        };
     }
 });
