@@ -288,7 +288,7 @@ button:disabled { background: #444; color: #888; cursor: not-allowed; }
 .verified-icon {
     color: #00a2ff;
     font-size: 0.9em;
-    margin-left: 4px; /* Separación del texto */
+    margin-left: 2px; /* Separación del texto */
     vertical-align: middle; /* Alineación perfecta con el texto */
     display: inline-block;
 }
