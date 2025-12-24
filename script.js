@@ -1,7 +1,6 @@
 import { initializeApp } from "https://esm.sh/firebase/app";
 import { getDatabase, ref, push, onValue, query, orderByChild, update, off, get, child, set, increment } from "https://esm.sh/firebase/database";
 
-// --- CONFIGURACIÓN ---
 const DEFAULT_AVATAR = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
 
 const firebaseConfig = {
@@ -28,7 +27,6 @@ let verifiedUsersList = [];
 let allUsersMap = {}; 
 let myFollowingList = []; 
 let userBeingReported = '';
-// --- TOASTS ---
 window.showToast = function(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if(!container) return;
@@ -80,18 +78,27 @@ window.getUserId = function() {
     return userId;
 }
 
-// --- LISTENERS ---
 function initFirebaseListener() {
     onValue(usersRef, (snap) => { 
         allUsersMap = snap.val() || {}; 
         const myUser = localStorage.getItem('savedRobloxUser');
         
-        // AUTO-EXPULSIÓN SI ME BANEAN
+        // 1. CHECK DE BANEO
         if (myUser && allUsersMap[myUser] && allUsersMap[myUser].isBanned === true) {
             showToast("tu cuenta ha sido suspendida", "error");
             localStorage.clear();
             setTimeout(() => { window.location.reload(); }, 3000);
             return;
+        }
+
+        // 2. CHECK DE ADMIN PARA EL MENÚ
+        const btnAdmin = document.getElementById('btnAdminPanel');
+        if(btnAdmin) {
+            if(myUser && allUsersMap[myUser] && allUsersMap[myUser].role === 'admin') {
+                btnAdmin.style.display = 'block'; // Mostrar si es admin
+            } else {
+                btnAdmin.style.display = 'none';  // Ocultar si no lo es
+            }
         }
 
         if (myUser && allUsersMap[myUser] && allUsersMap[myUser].following) {
@@ -114,7 +121,6 @@ function initFirebaseListener() {
         renderCurrentView();
     });
 }
-// --- NAVEGACIÓN ---
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
     localStorage.setItem('lastSection', sectionName);
@@ -286,39 +292,32 @@ function renderFullProfile(container) {
     const amIAdmin = allUsersMap[myUser]?.role === 'admin';
     const isBanned = ud.isBanned === true;
 
-    // --- LÓGICA DE VISUALIZACIÓN DE USUARIO ELIMINADO ---
     let displayNameToShow = ud.displayName || target;
     let avatarToShow = ud.avatar || DEFAULT_AVATAR;
     let bioToShow = ud.bio || "Sin biografía";
 
     if (isBanned) {
         if (amIAdmin) {
-            // ADMIN: Ve la info real + etiqueta
             displayNameToShow += " (SUSPENDIDO)";
         } else {
-            // USUARIO NORMAL: Ve "Usuario Eliminado"
             displayNameToShow = "Usuario Eliminado";
-            avatarToShow = DEFAULT_AVATAR; // Avatar por defecto
+            avatarToShow = DEFAULT_AVATAR;
             bioToShow = "";
         }
     }
-    // ----------------------------------------------------
 
     const isFollowing = myFollowingList.includes(target);
     const followBtnText = isFollowing ? "Dejar de seguir" : "Seguir";
     const btnStyle = isFollowing ? "background-color: #555;" : ""; 
     const userStatus = (ud.status && ud.status.trim() !== "" && !isBanned) ? `<div class="status-pill">${ud.status}</div>` : '';
     
-    // BOTONES DE ACCIÓN
     let actionButtons = '';
     if (isMe) {
         actionButtons = `<button onclick="openEditProfileModal()">Editar perfil</button>`;
     } else {
         if (amIAdmin && isBanned) {
-            // ADMIN viendo BANEADO -> Botón verde DESBANEAR
             actionButtons = `<button onclick="unbanUser('${target}')" style="background:#00e676; width:100%; font-weight:bold;">DESBANEAR USUARIO</button>`;
         } else if (!isBanned) {
-            // USUARIO NORMAL ACTIVO
             actionButtons = `
                 <div style="display:flex; gap:10px; justify-content:center;">
                     <button onclick="toggleFollow('${target}')" style="${btnStyle}; flex:1;">${followBtnText}</button>
@@ -329,7 +328,6 @@ function renderFullProfile(container) {
                 </div>
             `;
         }
-        // Si está baneado y NO soy admin, no muestro botones
     }
     
     const header = document.createElement('div');
@@ -359,13 +357,11 @@ function renderFullProfile(container) {
         </div>
     `;
     container.appendChild(header);
-    // Si está baneado, NO mostramos sus posts
     if (!isBanned) {
         allThreadsData.forEach(([k, t]) => { if(t.username === target) renderThread(k, t, container); });
     }
 }
 
-// --- PANEL ADMIN LOGICA ---
 window.openAdminPanel = function() {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!allUsersMap[myUser] || allUsersMap[myUser].role !== 'admin') {
@@ -405,10 +401,9 @@ window.deleteReport = function(k) { set(ref(db, `reports/${k}`), null).then(() =
 window.banUserFromPanel = function(u, k) { window.banUser(u); set(ref(db, `reports/${k}`), null); setTimeout(() => openAdminPanel(), 1000); };
 function renderPostList(container, isSearch) {
     const filtered = allThreadsData.filter(([k, t]) => {
-        // --- FILTRO DE BANEADOS ---
+        // FILTRO DE BANEADOS: No mostrar posts de gente baneada
         const author = allUsersMap[t.username];
-        if (author && author.isBanned === true) return false; // Ocultar si está baneado
-        // --------------------------
+        if (author && author.isBanned === true) return false; 
 
         if (!isSearch) return true;
         const term = searchTerm.toLowerCase();
@@ -424,7 +419,6 @@ function renderUserSearch(container) {
     if (!searchTerm) { container.innerHTML = '<p style="text-align:center; color:#777; margin-top:20px;">Busca personas...</p>'; return; }
     const term = searchTerm.toLowerCase();
     
-    // Check Admin
     const myUser = localStorage.getItem('savedRobloxUser');
     const amIAdmin = allUsersMap[myUser]?.role === 'admin';
 
@@ -434,7 +428,6 @@ function renderUserSearch(container) {
     ).forEach(username => {
         const uData = allUsersMap[username];
         
-        // Visualización en Búsqueda
         let displayName = uData.displayName || username;
         let avatar = uData.avatar || DEFAULT_AVATAR;
         const isVerified = verifiedUsersList.includes(username.toLowerCase());
@@ -478,7 +471,6 @@ function renderActivity(container) {
         });
     } else { container.innerHTML += '<p style="text-align:center; padding:40px; color:#555;">Sin actividad.</p>'; }
 }
-// --- EDICIÓN PERFIL ---
 window.openEditProfileModal = function() {
     const d = allUsersMap[localStorage.getItem('savedRobloxUser')] || {};
     document.getElementById('editAvatarPreview').src = d.avatar || DEFAULT_AVATAR;
@@ -517,7 +509,6 @@ window.saveProfileChanges = async function() {
     finally { btn.innerText = "GUARDAR CAMBIOS"; }
 };
 
-// --- REPORTES, BANEO Y DESBANEO ---
 window.reportUser = function(targetUser) {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return showToast("Inicia sesión primero", "error");
@@ -547,16 +538,13 @@ window.banUser = function(targetUser) {
     });
 };
 
-// FUNCIÓN PARA DESBANEAR
 window.unbanUser = function(targetUser) {
     showConfirm(`¿Restaurar acceso a ${targetUser}?`, () => {
-        // Al poner null, borramos la marca 'isBanned'
         update(ref(db), { [`users/${targetUser}/isBanned`]: null })
             .then(() => showToast(`${targetUser} restaurado.`, "success"))
             .catch(e => showToast("Error", "error"));
     });
 };
-// ------------------------------------
 
 window.toggleFollow = function(target) {
     const me = localStorage.getItem('savedRobloxUser');
@@ -643,7 +631,6 @@ if(avatarInput) {
     };
 }
 
-// --- COMENTARIOS: DETECCIÓN DE USUARIO ELIMINADO ---
 window.openComments = (key) => {
     const modal = document.getElementById('commentsModal');
     const list = document.getElementById('commentsList');
@@ -656,19 +643,15 @@ window.openComments = (key) => {
             const user = allUsersMap[c.username] || {};
             const isBanned = user.isBanned === true;
             const displayName = isBanned ? "Usuario Eliminado" : c.username;
-            // Opcional: Si quieres ocultar el texto también, descomenta la siguiente línea y comenta la otra
-            // const textContent = isBanned ? "<i>Comentario eliminado</i>" : makeLinksClickable(c.text);
             const textContent = makeLinksClickable(c.text);
-
             const d = document.createElement('div');
             d.innerHTML = `<strong>${displayName}:</strong> ${textContent}`;
             d.style.padding = "5px 0"; d.style.borderBottom = "1px solid #333";
-            if (isBanned) d.style.color = "#777"; // Gris para baneados
+            if(isBanned) d.style.color = "#777";
             list.appendChild(d);
         });
         else list.innerHTML = '<p style="text-align:center; color:#777;">Sin comentarios.</p>';
     });
-    // ... resto del formulario de comentarios ...
     const cForm = document.getElementById('commentForm');
     const newForm = cForm.cloneNode(true);
     cForm.parentNode.replaceChild(newForm, cForm);
