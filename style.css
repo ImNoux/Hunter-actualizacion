@@ -288,7 +288,7 @@ button:disabled { background: #444; color: #888; cursor: not-allowed; }
 .verified-icon {
     color: #00a2ff;
     font-size: 0.9em;
-    margin-left: 2px; /* Separación del texto */
+    margin-left: 4px; /* Separación del texto */
     vertical-align: middle; /* Alineación perfecta con el texto */
     display: inline-block;
 }
@@ -434,4 +434,53 @@ button:disabled { background: #444; color: #888; cursor: not-allowed; }
     min-width: 100%;
     object-fit: cover;
     border-radius: 8px;
+}
+/* --- AGREGAR AL FINAL DE STYLE.CSS --- */
+
+/* MENÚ DE 3 PUNTITOS EN POSTS */
+.post-header-right {
+    margin-left: auto; /* Empuja a la derecha */
+    position: relative;
+}
+
+.options-btn {
+    background: none; border: none; color: #888;
+    font-size: 1.2rem; cursor: pointer; padding: 5px;
+}
+
+.post-options-dropdown {
+    display: none; /* Oculto por defecto */
+    position: absolute;
+    top: 30px; right: 0;
+    background: #2b2d31;
+    border: 1px solid #444;
+    border-radius: 12px;
+    width: 200px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+    z-index: 100;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.post-options-dropdown.show { display: flex; }
+
+.post-option-item {
+    padding: 12px 15px;
+    color: #eee;
+    font-size: 0.95em;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: background 0.2s;
+    border-bottom: 1px solid #3a3a3a;
+}
+.post-option-item:last-child { border-bottom: none; }
+.post-option-item:hover { background-color: #383a40; }
+
+.post-option-item.danger { color: #ff4d4d; } /* Rojo para denunciar/bloquear */
+
+/* ESTILO DEL TIEMPO RELATIVO */
+.time-display {
+    font-size: 0.8em;
+    color: #777;
+    margin-right: 5px;
 }
