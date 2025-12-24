@@ -80,14 +80,13 @@ window.getUserId = function() {
     return userId;
 }
 
-// --- LISTENERS PRINCIPALES ---
+// --- LISTENERS ---
 function initFirebaseListener() {
-    // 1. Escuchar Usuarios
     onValue(usersRef, (snap) => { 
         allUsersMap = snap.val() || {}; 
         const myUser = localStorage.getItem('savedRobloxUser');
         
-        // CHECK DE BANEO AUTOMÁTICO
+        // AUTO-EXPULSIÓN SI ME BANEAN
         if (myUser && allUsersMap[myUser] && allUsersMap[myUser].isBanned === true) {
             showToast("tu cuenta ha sido suspendida", "error");
             localStorage.clear();
@@ -100,19 +99,15 @@ function initFirebaseListener() {
         } else {
             myFollowingList = [];
         }
-        // Actualizar vista si hay cambios
         if (allThreadsData.length > 0) renderCurrentView(); 
     });
     
-    // 2. Escuchar Publicaciones (Threads)
     onValue(query(threadsRef, orderByChild('timestamp')), (snap) => {
         const data = snap.val();
-        // Convertir objeto a array y ordenar por fecha (más nuevo primero)
         allThreadsData = data ? Object.entries(data).sort((a,b) => b[1].timestamp - a[1].timestamp) : [];
-        renderCurrentView(); // <--- IMPORTANTE: Esto dibuja los posts
+        renderCurrentView();
     });
     
-    // 3. Escuchar Verificados
     onValue(verifiedRef, (snap) => {
         const data = snap.val();
         verifiedUsersList = data ? Object.keys(data).map(n => n.toLowerCase()) : [];
@@ -124,13 +119,11 @@ window.changeSection = function(sectionName) {
     currentSection = sectionName;
     localStorage.setItem('lastSection', sectionName);
     
-    // Solo olvidar el perfil visitado si NO vamos a la pestaña Perfil
     if(sectionName !== 'Perfil') {
         localStorage.removeItem('lastVisitedProfile');
         viewingUserProfile = ''; 
     }
     
-    // Actualizar iconos del menú
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const sc = document.getElementById('searchContainer');
     
@@ -142,7 +135,6 @@ window.changeSection = function(sectionName) {
         const map = { Home: 'nav-home', Activity: 'nav-activity', Perfil: 'nav-profile' };
         if(map[sectionName]) document.getElementById(map[sectionName]).classList.add('active');
     }
-    
     renderCurrentView();
     if(sectionName === 'Home') window.scrollTo(0,0);
 };
@@ -159,7 +151,6 @@ window.openFullProfile = (u) => {
     changeSection('Perfil'); 
 };
 
-// Despachador de Vistas
 function renderCurrentView() {
     const container = document.querySelector('.thread-container');
     if(!container) return;
@@ -172,9 +163,8 @@ function renderCurrentView() {
         if (searchTerm) renderPostList(container, true);
         return;
     }
-    renderPostList(container, false); // Por defecto: Home
+    renderPostList(container, false);
 }
-
 window.updateImageCounter = function(carousel) {
     const width = carousel.offsetWidth;
     const currentIndex = Math.round(carousel.scrollLeft / width) + 1;
@@ -182,7 +172,7 @@ window.updateImageCounter = function(carousel) {
     const badge = carousel.parentElement.querySelector('.image-counter-badge');
     if(badge) badge.innerText = `${currentIndex}/${totalImages}`;
 };
-// --- RENDERIZADO DE UN POST INDIVIDUAL ---
+
 function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.className = 'thread';
@@ -198,7 +188,6 @@ function renderThread(key, thread, container) {
     const followText = isFollowing ? "Dejar de seguir" : "Seguir";
     const followIcon = isFollowing ? "minus-circle" : "plus-circle";
     
-    // Avatar y menú flotante
     let avatarHTML = '';
     if (!isMe && myUser) {
         if (isFollowing) {
@@ -222,7 +211,6 @@ function renderThread(key, thread, container) {
         avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
     }
     
-    // Imágenes
     let mediaHTML = '';
     if(thread.images && thread.images.length > 1) {
         mediaHTML = `
@@ -273,74 +261,6 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 }
-
-// --- RENDERIZADO DE PERFIL COMPLETO ---
-function renderFullProfile(container) {
-    const target = viewingUserProfile || localStorage.getItem('savedRobloxUser');
-    if (!target) return showToast("Inicia sesión", "error");
-    
-    const ud = allUsersMap[target] || {};
-    const myUser = localStorage.getItem('savedRobloxUser');
-    const isMe = target === myUser;
-    const isVerified = verifiedUsersList.includes(target.toLowerCase());
-    const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
-    
-    // VERIFICAR SI SOY ADMIN
-    const amIAdmin = allUsersMap[myUser]?.role === 'admin';
-
-    const isFollowing = myFollowingList.includes(target);
-    const followBtnText = isFollowing ? "Dejar de seguir" : "Seguir";
-    const btnStyle = isFollowing ? "background-color: #555;" : ""; 
-    const userStatus = ud.status && ud.status.trim() !== "" ? `<div class="status-pill">${ud.status}</div>` : '';
-    
-    // LÓGICA DE BOTONES (Editar vs Seguir/Reportar/Banear)
-    let actionButtons = '';
-    if (isMe) {
-        actionButtons = `<button onclick="openEditProfileModal()">Editar perfil</button>`;
-    } else {
-        actionButtons = `
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button onclick="toggleFollow('${target}')" style="${btnStyle}; flex:1;">${followBtnText}</button>
-                <button onclick="reportUser('${target}')" style="background:#444; width:50px; display:flex; justify-content:center; align-items:center;" title="Reportar">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </button>
-                ${amIAdmin ? `<button onclick="banUser('${target}')" style="background:#cc0000; width:50px; display:flex; justify-content:center; align-items:center;" title="BANEAR"><i class="fas fa-ban"></i></button>` : ''}
-            </div>
-        `;
-    }
-    
-    const header = document.createElement('div');
-    header.className = 'profile-header-container';
-    header.innerHTML = `
-        <div class="profile-top-section">
-            <div class="avatar-wrapper" style="cursor:default;">
-                ${userStatus}
-                <img src="${ud.avatar || DEFAULT_AVATAR}" class="profile-avatar-big" style="width:80px; height:80px; border-radius:50%;">
-            </div>
-            <div style="margin-left:15px;">
-                <div class="username-styled" style="font-size:1.4em;">
-                    ${ud.displayName || target}
-                </div>
-                <div class="user-rank-styled">${ud.role || "Miembro"}</div>
-                <span style="color:#00a2ff; font-size:0.9em; display:block; margin-top:5px;">
-                    @${ud.customHandle || target} ${verifiedIconHTML}
-                </span>
-            </div>
-        </div>
-        <div class="profile-bio-section">${makeLinksClickable(ud.bio || "Sin biografía")}</div>
-        <div class="profile-stats-bar">
-            <div class="p-stat"><span>${formatCount(ud.followingCount)}</span><label>Siguiendo</label></div>
-            <div class="p-stat"><span>${formatCount(ud.followersCount)}</span><label>Seguidores</label></div>
-        </div>
-        <div style="padding: 10px 15px;">
-            ${actionButtons}
-        </div>
-    `;
-    container.appendChild(header);
-    allThreadsData.forEach(([k, t]) => { if(t.username === target) renderThread(k, t, container); });
-}
-
-// --- UTILIDADES DE VISUALIZACIÓN ---
 window.toggleMiniMenu = function(element) {
     document.querySelectorAll('.mini-action-menu.show').forEach(el => {
         if(el !== element.querySelector('.mini-action-menu')) el.classList.remove('show');
@@ -354,113 +274,104 @@ document.addEventListener('click', function(e) {
     }
 });
 
-function renderPostList(container, isSearch) {
-    const filtered = allThreadsData.filter(([k, t]) => {
-        if (!isSearch) return true;
-        const term = searchTerm.toLowerCase();
-        const tUser = t.username || ""; 
-        const tTitle = t.title || "";
-        return tTitle.toLowerCase().includes(term) || tUser.toLowerCase().includes(term);
-    });
-    if (filtered.length) filtered.forEach(([k, t]) => renderThread(k, t, container));
-    else container.innerHTML += '<p style="text-align:center; padding:20px; color:#777;">Sin resultados.</p>';
-}
+function renderFullProfile(container) {
+    const target = viewingUserProfile || localStorage.getItem('savedRobloxUser');
+    if (!target) return showToast("Inicia sesión", "error");
+    
+    const ud = allUsersMap[target] || {};
+    const myUser = localStorage.getItem('savedRobloxUser');
+    const isMe = target === myUser;
+    const isVerified = verifiedUsersList.includes(target.toLowerCase());
+    const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
+    const amIAdmin = allUsersMap[myUser]?.role === 'admin';
+    const isBanned = ud.isBanned === true;
 
-function renderUserSearch(container) {
-    if (!searchTerm) { container.innerHTML = '<p style="text-align:center; color:#777; margin-top:20px;">Busca personas...</p>'; return; }
-    const term = searchTerm.toLowerCase();
-    Object.keys(allUsersMap).filter(u => 
-        u.toLowerCase().includes(term) || 
-        (allUsersMap[u].displayName && allUsersMap[u].displayName.toLowerCase().includes(term))
-    ).forEach(username => {
-        const uData = allUsersMap[username];
-        const isVerified = verifiedUsersList.includes(username.toLowerCase());
-        const verifIcon = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
-        const div = document.createElement('div');
-        div.className = 'user-search-result';
-        div.onclick = () => openFullProfile(username);
-        div.innerHTML = `
-            <img src="${uData.avatar || DEFAULT_AVATAR}" class="user-search-avatar">
-            <div class="user-search-info">
-                <h4 style="margin:0; color:#fff;">${uData.displayName || username}</h4>
-                <p style="color:#00a2ff; margin:0;">@${uData.customHandle || username} ${verifIcon}</p>
+    // --- LÓGICA DE VISUALIZACIÓN DE USUARIO ELIMINADO ---
+    let displayNameToShow = ud.displayName || target;
+    let avatarToShow = ud.avatar || DEFAULT_AVATAR;
+    let bioToShow = ud.bio || "Sin biografía";
+
+    if (isBanned) {
+        if (amIAdmin) {
+            // ADMIN: Ve la info real + etiqueta
+            displayNameToShow += " (SUSPENDIDO)";
+        } else {
+            // USUARIO NORMAL: Ve "Usuario Eliminado"
+            displayNameToShow = "Usuario Eliminado";
+            avatarToShow = DEFAULT_AVATAR; // Avatar por defecto
+            bioToShow = "";
+        }
+    }
+    // ----------------------------------------------------
+
+    const isFollowing = myFollowingList.includes(target);
+    const followBtnText = isFollowing ? "Dejar de seguir" : "Seguir";
+    const btnStyle = isFollowing ? "background-color: #555;" : ""; 
+    const userStatus = (ud.status && ud.status.trim() !== "" && !isBanned) ? `<div class="status-pill">${ud.status}</div>` : '';
+    
+    // BOTONES DE ACCIÓN
+    let actionButtons = '';
+    if (isMe) {
+        actionButtons = `<button onclick="openEditProfileModal()">Editar perfil</button>`;
+    } else {
+        if (amIAdmin && isBanned) {
+            // ADMIN viendo BANEADO -> Botón verde DESBANEAR
+            actionButtons = `<button onclick="unbanUser('${target}')" style="background:#00e676; width:100%; font-weight:bold;">DESBANEAR USUARIO</button>`;
+        } else if (!isBanned) {
+            // USUARIO NORMAL ACTIVO
+            actionButtons = `
+                <div style="display:flex; gap:10px; justify-content:center;">
+                    <button onclick="toggleFollow('${target}')" style="${btnStyle}; flex:1;">${followBtnText}</button>
+                    <button onclick="reportUser('${target}')" style="background:#444; width:50px; display:flex; justify-content:center; align-items:center;" title="Reportar">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </button>
+                    ${amIAdmin ? `<button onclick="banUser('${target}')" style="background:#cc0000; width:50px; display:flex; justify-content:center; align-items:center;" title="BANEAR"><i class="fas fa-ban"></i></button>` : ''}
+                </div>
+            `;
+        }
+        // Si está baneado y NO soy admin, no muestro botones
+    }
+    
+    const header = document.createElement('div');
+    header.className = 'profile-header-container';
+    header.innerHTML = `
+        <div class="profile-top-section">
+            <div class="avatar-wrapper" style="cursor:default;">
+                ${userStatus}
+                <img src="${avatarToShow}" class="profile-avatar-big" style="width:80px; height:80px; border-radius:50%;">
             </div>
-        `;
-        container.appendChild(div);
-    });
+            <div style="margin-left:15px;">
+                <div class="username-styled" style="font-size:1.4em;">
+                    ${displayNameToShow}
+                </div>
+                <div class="user-rank-styled">${isBanned ? "" : (ud.role || "Miembro")}</div>
+                ${!isBanned ? `<span style="color:#00a2ff; font-size:0.9em; display:block; margin-top:5px;">@${ud.customHandle || target} ${verifiedIconHTML}</span>` : ''}
+            </div>
+        </div>
+        <div class="profile-bio-section">${makeLinksClickable(bioToShow)}</div>
+        ${!isBanned ? `
+        <div class="profile-stats-bar">
+            <div class="p-stat"><span>${formatCount(ud.followingCount)}</span><label>Siguiendo</label></div>
+            <div class="p-stat"><span>${formatCount(ud.followersCount)}</span><label>Seguidores</label></div>
+        </div>` : ''}
+        <div style="padding: 10px 15px;">
+            ${actionButtons}
+        </div>
+    `;
+    container.appendChild(header);
+    // Si está baneado, NO mostramos sus posts
+    if (!isBanned) {
+        allThreadsData.forEach(([k, t]) => { if(t.username === target) renderThread(k, t, container); });
+    }
 }
 
-function renderActivity(container) {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if (!myUser) { container.innerHTML = '<p style="text-align:center; padding:30px;">Inicia sesión.</p>'; return; }
-    container.innerHTML = '<h3 style="padding:15px; border-bottom:1px solid #333;">Actividad</h3>';
-    const myData = allUsersMap[myUser];
-    if (myData?.followers) {
-        Object.keys(myData.followers).forEach(f => {
-            const fd = allUsersMap[f] || {};
-            const div = document.createElement('div');
-            div.className = 'activity-item';
-            div.innerHTML = `<img src="${fd.avatar || DEFAULT_AVATAR}" class="activity-avatar"> <div class="activity-text"><strong>${f}</strong> te siguió.</div>`;
-            container.appendChild(div);
-        });
-    } else { container.innerHTML += '<p style="text-align:center; padding:40px; color:#555;">Sin actividad.</p>'; }
-}
-// --- SISTEMA DE BANEO (DISEÑO MEJORADO) ---
-window.banUser = function(targetUser) {
-    // Usamos el modal gris oscuro en vez del alert feo
-    showConfirm(`¿Esta seguro que quiere banear esta cuenta?`, () => {
-        const updates = {};
-        updates[`users/${targetUser}/isBanned`] = true;
-        
-        update(ref(db), updates)
-            .then(() => showToast(`${targetUser} ha sido baneado.`, "success"))
-            .catch(e => showToast("Error al banear", "error"));
-    });
-};
-
-// --- SISTEMA DE REPORTES ---
-window.reportUser = function(targetUser) {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if (!myUser) return showToast("Inicia sesión primero", "error");
-    if (myUser === targetUser) return showToast("No puedes reportarte a ti mismo", "error");
-
-    userBeingReported = targetUser;
-    const nameLabel = document.getElementById('reportTargetName');
-    if(nameLabel) nameLabel.innerText = `Reportando a: ${targetUser}`;
-    
-    const modal = document.getElementById('reportModal');
-    if(modal) modal.style.display = 'block';
-};
-
-window.submitReportAction = function() {
-    const reason = document.getElementById('reportReasonSelect').value;
-    const myUser = localStorage.getItem('savedRobloxUser');
-    
-    if (!userBeingReported) return;
-
-    const reportData = {
-        reportedUser: userBeingReported,
-        reportedBy: myUser,
-        reason: reason,
-        timestamp: Date.now(),
-        status: 'pending'
-    };
-    
-    push(ref(db, 'reports'), reportData)
-        .then(() => {
-            showToast("Reporte enviado.", "success");
-            document.getElementById('reportModal').style.display = 'none';
-            userBeingReported = '';
-        })
-        .catch(() => showToast("Error", "error"));
-};
-
-// --- PANEL ADMIN (Abrir) ---
+// --- PANEL ADMIN LOGICA ---
 window.openAdminPanel = function() {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!allUsersMap[myUser] || allUsersMap[myUser].role !== 'admin') {
         return showToast("Acceso denegado.", "error");
     }
+
     const modal = document.getElementById('adminModal');
     const container = document.getElementById('adminReportsList');
     if(modal) modal.style.display = 'block';
@@ -484,12 +395,89 @@ window.openAdminPanel = function() {
                 `;
                 container.appendChild(div);
             });
-        } else { container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Sin reportes.</p>'; }
+        } else {
+            container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Sin reportes.</p>';
+        }
     });
 };
+
 window.deleteReport = function(k) { set(ref(db, `reports/${k}`), null).then(() => { showToast("Reporte borrado", "success"); openAdminPanel(); }); };
 window.banUserFromPanel = function(u, k) { window.banUser(u); set(ref(db, `reports/${k}`), null); setTimeout(() => openAdminPanel(), 1000); };
+function renderPostList(container, isSearch) {
+    const filtered = allThreadsData.filter(([k, t]) => {
+        // --- FILTRO DE BANEADOS ---
+        const author = allUsersMap[t.username];
+        if (author && author.isBanned === true) return false; // Ocultar si está baneado
+        // --------------------------
 
+        if (!isSearch) return true;
+        const term = searchTerm.toLowerCase();
+        const tUser = t.username || ""; 
+        const tTitle = t.title || "";
+        return tTitle.toLowerCase().includes(term) || tUser.toLowerCase().includes(term);
+    });
+    if (filtered.length) filtered.forEach(([k, t]) => renderThread(k, t, container));
+    else container.innerHTML += '<p style="text-align:center; padding:20px; color:#777;">Sin resultados.</p>';
+}
+
+function renderUserSearch(container) {
+    if (!searchTerm) { container.innerHTML = '<p style="text-align:center; color:#777; margin-top:20px;">Busca personas...</p>'; return; }
+    const term = searchTerm.toLowerCase();
+    
+    // Check Admin
+    const myUser = localStorage.getItem('savedRobloxUser');
+    const amIAdmin = allUsersMap[myUser]?.role === 'admin';
+
+    Object.keys(allUsersMap).filter(u => 
+        u.toLowerCase().includes(term) || 
+        (allUsersMap[u].displayName && allUsersMap[u].displayName.toLowerCase().includes(term))
+    ).forEach(username => {
+        const uData = allUsersMap[username];
+        
+        // Visualización en Búsqueda
+        let displayName = uData.displayName || username;
+        let avatar = uData.avatar || DEFAULT_AVATAR;
+        const isVerified = verifiedUsersList.includes(username.toLowerCase());
+        const verifIcon = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
+
+        if (uData.isBanned === true) {
+            if (amIAdmin) {
+                displayName += " (BANEADO)";
+            } else {
+                displayName = "Usuario Eliminado";
+                avatar = DEFAULT_AVATAR;
+            }
+        }
+
+        const div = document.createElement('div');
+        div.className = 'user-search-result';
+        div.onclick = () => openFullProfile(username);
+        div.innerHTML = `
+            <img src="${avatar}" class="user-search-avatar">
+            <div class="user-search-info">
+                <h4 style="margin:0; color:#fff;">${displayName}</h4>
+                <p style="color:#00a2ff; margin:0;">${uData.isBanned ? "" : "@" + (uData.customHandle || username) + " " + verifIcon}</p>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function renderActivity(container) {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) { container.innerHTML = '<p style="text-align:center; padding:30px;">Inicia sesión.</p>'; return; }
+    container.innerHTML = '<h3 style="padding:15px; border-bottom:1px solid #333;">Actividad</h3>';
+    const myData = allUsersMap[myUser];
+    if (myData?.followers) {
+        Object.keys(myData.followers).forEach(f => {
+            const fd = allUsersMap[f] || {};
+            const div = document.createElement('div');
+            div.className = 'activity-item';
+            div.innerHTML = `<img src="${fd.avatar || DEFAULT_AVATAR}" class="activity-avatar"> <div class="activity-text"><strong>${f}</strong> te siguió.</div>`;
+            container.appendChild(div);
+        });
+    } else { container.innerHTML += '<p style="text-align:center; padding:40px; color:#555;">Sin actividad.</p>'; }
+}
 // --- EDICIÓN PERFIL ---
 window.openEditProfileModal = function() {
     const d = allUsersMap[localStorage.getItem('savedRobloxUser')] || {};
@@ -529,6 +517,47 @@ window.saveProfileChanges = async function() {
     finally { btn.innerText = "GUARDAR CAMBIOS"; }
 };
 
+// --- REPORTES, BANEO Y DESBANEO ---
+window.reportUser = function(targetUser) {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) return showToast("Inicia sesión primero", "error");
+    if (myUser === targetUser) return showToast("No puedes reportarte a ti mismo", "error");
+
+    userBeingReported = targetUser;
+    const nameLabel = document.getElementById('reportTargetName');
+    if(nameLabel) nameLabel.innerText = `Reportando a: ${targetUser}`;
+    
+    const modal = document.getElementById('reportModal');
+    if(modal) modal.style.display = 'block';
+};
+
+window.submitReportAction = function() {
+    const reason = document.getElementById('reportReasonSelect').value;
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!userBeingReported) return;
+    const reportData = { reportedUser: userBeingReported, reportedBy: myUser, reason: reason, timestamp: Date.now(), status: 'pending' };
+    push(ref(db, 'reports'), reportData).then(() => { showToast("Reporte enviado.", "success"); document.getElementById('reportModal').style.display = 'none'; userBeingReported = ''; }).catch(() => showToast("Error", "error"));
+};
+
+window.banUser = function(targetUser) {
+    showConfirm(`¿Esta seguro que quiere banear esta cuenta?`, () => {
+        update(ref(db), { [`users/${targetUser}/isBanned`]: true })
+            .then(() => showToast(`${targetUser} ha sido baneado.`, "success"))
+            .catch(e => showToast("Error al banear", "error"));
+    });
+};
+
+// FUNCIÓN PARA DESBANEAR
+window.unbanUser = function(targetUser) {
+    showConfirm(`¿Restaurar acceso a ${targetUser}?`, () => {
+        // Al poner null, borramos la marca 'isBanned'
+        update(ref(db), { [`users/${targetUser}/isBanned`]: null })
+            .then(() => showToast(`${targetUser} restaurado.`, "success"))
+            .catch(e => showToast("Error", "error"));
+    });
+};
+// ------------------------------------
+
 window.toggleFollow = function(target) {
     const me = localStorage.getItem('savedRobloxUser');
     if(!me) { showToast("Regístrate primero", "error"); return; }
@@ -537,6 +566,7 @@ window.toggleFollow = function(target) {
     const updates = {};
     const myFollowingCount = allUsersMap[me]?.followingCount || 0;
     const targetFollowersCount = allUsersMap[target]?.followersCount || 0;
+
     if (isFollowing) {
         updates[`users/${me}/following/${target}`] = null; 
         updates[`users/${target}/followers/${me}`] = null;
@@ -612,6 +642,8 @@ if(avatarInput) {
         } catch(e) { showToast("Error", "error"); }
     };
 }
+
+// --- COMENTARIOS: DETECCIÓN DE USUARIO ELIMINADO ---
 window.openComments = (key) => {
     const modal = document.getElementById('commentsModal');
     const list = document.getElementById('commentsList');
@@ -621,13 +653,22 @@ window.openComments = (key) => {
         list.innerHTML = '';
         const data = snap.val();
         if(data) Object.values(data).forEach(c => {
+            const user = allUsersMap[c.username] || {};
+            const isBanned = user.isBanned === true;
+            const displayName = isBanned ? "Usuario Eliminado" : c.username;
+            // Opcional: Si quieres ocultar el texto también, descomenta la siguiente línea y comenta la otra
+            // const textContent = isBanned ? "<i>Comentario eliminado</i>" : makeLinksClickable(c.text);
+            const textContent = makeLinksClickable(c.text);
+
             const d = document.createElement('div');
-            d.innerHTML = `<strong>${c.username}:</strong> ${makeLinksClickable(c.text)}`;
+            d.innerHTML = `<strong>${displayName}:</strong> ${textContent}`;
             d.style.padding = "5px 0"; d.style.borderBottom = "1px solid #333";
+            if (isBanned) d.style.color = "#777"; // Gris para baneados
             list.appendChild(d);
         });
         else list.innerHTML = '<p style="text-align:center; color:#777;">Sin comentarios.</p>';
     });
+    // ... resto del formulario de comentarios ...
     const cForm = document.getElementById('commentForm');
     const newForm = cForm.cloneNode(true);
     cForm.parentNode.replaceChild(newForm, cForm);
@@ -639,6 +680,7 @@ window.openComments = (key) => {
         document.getElementById('commentInput').value = '';
     };
 };
+
 const form = document.getElementById('newThreadForm');
 if(form) {
     form.onsubmit = async (e) => {
@@ -669,7 +711,6 @@ if(form) {
         changeSection('Home');
     };
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     const user = localStorage.getItem('savedRobloxUser');
