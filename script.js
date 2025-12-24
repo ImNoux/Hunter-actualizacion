@@ -366,223 +366,38 @@ function renderUserSearch(container) {
         container.appendChild(div);
     });
 }
-function renderActivity(container) {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if (!myUser) { container.innerHTML = '<p style="text-align:center; padding:30px;">Inicia sesión.</p>'; return; }
-    container.innerHTML = '<h3 style="padding:15px; border-bottom:1px solid #333;">Actividad</h3>';
-    const myData = allUsersMap[myUser];
-    if (myData?.followers) {
-        Object.keys(myData.followers).forEach(f => {
-            const fd = allUsersMap[f] || {};
-            const div = document.createElement('div');
-            div.className = 'activity-item';
-            div.innerHTML = `<img src="${fd.avatar || DEFAULT_AVATAR}" class="activity-avatar"> <div class="activity-text"><strong>${f}</strong> te siguió.</div>`;
-            container.appendChild(div);
-        });
-    } else { container.innerHTML += '<p style="text-align:center; padding:40px; color:#555;">Sin actividad.</p>'; }
-}
-
-window.openEditProfileModal = function() {
-    const d = allUsersMap[localStorage.getItem('savedRobloxUser')] || {};
-    document.getElementById('editAvatarPreview').src = d.avatar || DEFAULT_AVATAR;
-    document.getElementById('editNameInput').value = d.displayName || "";
-    document.getElementById('editHandleInput').value = d.customHandle || "";
-    document.getElementById('editBioInput').value = d.bio || "";
-    document.getElementById('editStatusInput').value = d.status || "";
-    openModal('editProfileModal');
-};
-
-window.saveProfileChanges = async function() {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    const ud = allUsersMap[myUser] || {};
-    const now = Date.now();
-    const gap = 15 * 24 * 60 * 60 * 1000;
-    if (ud.lastProfileUpdate && (now - ud.lastProfileUpdate < gap)) {
-        const left = Math.ceil((gap - (now - ud.lastProfileUpdate)) / (1000*60*60*24));
-        const newName = document.getElementById('editNameInput').value;
-        const newHandle = document.getElementById('editHandleInput').value;
-        if (newName !== ud.displayName || newHandle !== ud.customHandle) {
-            return showToast(`Espera ${left} días para cambiar tus nombres.`, "error");
-        }
-    }
-    const btn = document.getElementById('saveProfileBtn');
-    btn.innerText = "Guardando...";
-    const updates = {
-        [`users/${myUser}/displayName`]: document.getElementById('editNameInput').value,
-        [`users/${myUser}/customHandle`]: document.getElementById('editHandleInput').value,
-        [`users/${myUser}/bio`]: document.getElementById('editBioInput').value,
-        [`users/${myUser}/status`]: document.getElementById('editStatusInput').value,
-        [`users/${myUser}/lastProfileUpdate`]: now
-    };
-    try { await update(ref(db), updates); showToast("Perfil actualizado", "success"); closeModal('editProfileModal'); } 
-    catch(e) { showToast("Error al guardar", "error"); }
-    finally { btn.innerText = "GUARDAR CAMBIOS"; }
-};
-
-window.toggleFollow = function(target) {
-    const me = localStorage.getItem('savedRobloxUser');
-    if(!me) { showToast("Regístrate primero", "error"); return; }
-    if(me === target) return;
-    const updates = {};
-    updates[`users/${me}/following/${target}`] = true; 
-    updates[`users/${target}/followers/${me}`] = true;
-    update(ref(db), updates);
-    showToast(`Siguiendo a ${target}`, "success");
-    setTimeout(() => renderCurrentView(), 300);
-};
-
-window.loginSystem = async function() {
-    const u = document.getElementById('loginUser').value.trim();
-    const p = document.getElementById('loginPin').value.trim();
-    try {
-        const s = await get(child(usersRef, u));
-        if (s.exists() && s.val().pin == p) {
-            localStorage.setItem('savedRobloxUser', u);
-            localStorage.setItem('userId', 'res_' + u);
-            window.location.reload();
-        } else showToast("Datos incorrectos", "error");
-    } catch(e) { showToast("Error de red", "error"); }
-};
-
-window.registerSystem = async function() {
-    const u = document.getElementById('regUser').value.trim();
-    const p = document.getElementById('regPin').value.trim();
-    if(p.length < 4) return showToast("PIN muy corto", "error");
-    try {
-        const s = await get(child(usersRef, u));
-        if (s.exists()) return showToast("Ya existe", "error");
-        await set(child(usersRef, u), { pin: p, displayName: u, customHandle: u, registeredAt: Date.now(), followersCount: 0, followingCount: 0 });
-        localStorage.setItem('savedRobloxUser', u);
-        window.location.reload();
-    } catch(e) { showToast("Error al registrar", "error"); }
-};
-
-window.logoutSystem = () => showConfirm("¿Cerrar sesión?", () => { 
-    localStorage.clear(); window.location.reload(); 
-});
-
-const searchIn = document.getElementById('searchInput');
-if(searchIn) searchIn.oninput = (e) => { searchTerm = e.target.value.trim(); renderCurrentView(); };
-
-window.toggleLike = (k, c, b) => {
-    const u = localStorage.getItem('savedRobloxUser');
-    if(!u) return showToast("Inicia sesión", "error");
-    const id = getUserId();
-    const isL = b.querySelector('i').classList.contains('fas');
-    update(ref(db), { [`threads/${k}/likeCount`]: isL ? c - 1 : c + 1, [`threads/${k}/likes/${id}`]: isL ? null : true });
-};
-
-const avatarInput = document.getElementById('avatarUpload');
-if(avatarInput) {
-    avatarInput.onchange = async function() {
-        const user = localStorage.getItem('savedRobloxUser');
-        if(!user || this.files.length === 0) return;
-        showToast("Subiendo avatar...", "info");
-        const formData = new FormData();
-        formData.append('file', this.files[0]);
-        formData.append('upload_preset', 'comunidad_arc');
-        try {
-            const res = await fetch(`https://api.cloudinary.com/v1_1/dmrlmfoip/auto/upload`, { method: 'POST', body: formData });
-            const data = await res.json();
-            await update(ref(db, `users/${user}`), { avatar: data.secure_url });
-            document.getElementById('editAvatarPreview').src = data.secure_url;
-            showToast("Avatar actualizado", "success");
-        } catch(e) { showToast("Error al subir", "error"); }
-    };
-}
-
-window.openComments = (key) => {
-    const modal = document.getElementById('commentsModal');
-    const list = document.getElementById('commentsList');
-    modal.style.display = 'block';
-    off(ref(db, `threads/${key}/comments`));
-    onValue(ref(db, `threads/${key}/comments`), (snap) => {
-        list.innerHTML = '';
-        const data = snap.val();
-        if(data) Object.values(data).forEach(c => {
-            const d = document.createElement('div');
-            d.innerHTML = `<strong>${c.username}:</strong> ${makeLinksClickable(c.text)}`;
-            d.style.padding = "5px 0"; d.style.borderBottom = "1px solid #333";
-            list.appendChild(d);
-        });
-        else list.innerHTML = '<p style="text-align:center; color:#777;">Sin comentarios.</p>';
-    });
-    
-    const cForm = document.getElementById('commentForm');
-    const newForm = cForm.cloneNode(true);
-    cForm.parentNode.replaceChild(newForm, cForm);
-    newForm.onsubmit = (e) => {
-        e.preventDefault();
-        const u = localStorage.getItem('savedRobloxUser');
-        if(!u) return showToast("Inicia sesión", "error");
-        push(ref(db, `threads/${key}/comments`), { text: document.getElementById('commentInput').value, username: u, timestamp: Date.now() });
-        document.getElementById('commentInput').value = '';
-    };
-};
-
-const form = document.getElementById('newThreadForm');
-if(form) {
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        const user = localStorage.getItem('savedRobloxUser');
-        if(!user) return showToast("Inicia sesión", "error");
-        const btn = document.getElementById('submitBtn');
-        btn.disabled = true; btn.innerText = "Subiendo...";
-        let imgs = [];
-        const files = document.getElementById('imageFile').files;
-        for (let i = 0; i < files.length; i++) {
-            const fd = new FormData();
-            fd.append('file', files[i]);
-            fd.append('upload_preset', 'comunidad_arc');
-            try {
-                const res = await fetch(`https://api.cloudinary.com/v1_1/dmrlmfoip/auto/upload`, { method: 'POST', body: fd });
-                const data = await res.json();
-                imgs.push(data.secure_url);
-            } catch(err) { console.error(err); }
-        }
-        const post = {
-            title: document.getElementById('title').value,
-            description: document.getElementById('description').value,
-            category: document.getElementById('categorySelect').value,
-            username: user,
-            images: imgs, 
-            image: imgs.length > 0 ? imgs[0] : "",
-            timestamp: Date.now(),
-            displayDate: new Date().toLocaleDateString('es-ES'),
-            likeCount: 0
-        };
-        await push(threadsRef, post);
-        form.reset();
-        document.getElementById('fileName').textContent = "";
-        closeModal('newThreadModalContent');
-        showToast("Publicado", "success");
-        btn.disabled = false; btn.innerText = "PUBLICAR";
-        changeSection('Home');
-    };
-}
-
-// --- INICIALIZACIÓN (MODIFICADA PARA RECUPERAR PERFIL) ---
+// --- INICIALIZACIÓN (CORREGIDA) ---
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     const user = localStorage.getItem('savedRobloxUser');
+    
     if(user) { 
         document.getElementById('menuLogin').style.display = 'none'; 
         document.getElementById('menuLogout').style.display = 'block'; 
     }
     
-    // Recuperar estado al actualizar
+    // Recuperar la última sección visitada
     const lastSection = localStorage.getItem('lastSection') || 'Home';
     
-    // Si la última sección fue Perfil, intentamos recuperar a quién veíamos
+    // Lógica especial si estábamos en un Perfil
     if (lastSection === 'Perfil') {
         const savedProfile = localStorage.getItem('lastVisitedProfile');
+        
         if (savedProfile) {
+            // CASO A: Estábamos viendo el perfil de OTRA persona
             viewingUserProfile = savedProfile;
         } else {
-            // Si no hay perfil guardado, volvemos a Home por seguridad
-            changeSection('Home');
-            return;
+            // CASO B: Estábamos en NUESTRO perfil (savedProfile es nulo)
+            // Si el usuario tiene sesión iniciada, dejamos que cargue su perfil.
+            if (user) {
+                viewingUserProfile = ''; // Esto indica cargar "Mi Perfil"
+            } else {
+                // Si no hay sesión y tampoco perfil ajeno guardado, vamos al Home
+                changeSection('Home');
+                return;
+            }
         }
     }
+    
     changeSection(lastSection);
 });
