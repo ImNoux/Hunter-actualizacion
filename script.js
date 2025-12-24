@@ -26,6 +26,7 @@ let allThreadsData = [];
 let verifiedUsersList = []; 
 let allUsersMap = {}; 
 let myFollowingList = []; 
+let myBlockedList = []; // NUEVO: Lista de bloqueados
 let userBeingReported = '';
 window.showToast = function(message, type = 'info') {
     const container = document.getElementById('toastContainer');
@@ -69,6 +70,28 @@ function formatCount(num) {
     return num;
 }
 
+// --- NUEVO: FORMATO DE TIEMPO RELATIVO (Hace 5 min, 1h, etc) ---
+function formatTimeAgo(timestamp) {
+    if (!timestamp) return "";
+    const now = Date.now();
+    const diff = Math.floor((now - timestamp) / 1000); // Diferencia en segundos
+
+    if (diff < 60) return "hace un momento";
+    
+    const minutes = Math.floor(diff / 60);
+    if (minutes < 60) return `${minutes} min`;
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h`;
+    
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days} d`;
+    
+    // Si es más de una semana, muestra la fecha
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
 window.getUserId = function() {
     let userId = localStorage.getItem('userId');
     if (!userId) {
@@ -83,7 +106,6 @@ function initFirebaseListener() {
         allUsersMap = snap.val() || {}; 
         const myUser = localStorage.getItem('savedRobloxUser');
         
-        // 1. CHECK DE BANEO
         if (myUser && allUsersMap[myUser] && allUsersMap[myUser].isBanned === true) {
             showToast("tu cuenta ha sido suspendida", "error");
             localStorage.clear();
@@ -91,20 +113,21 @@ function initFirebaseListener() {
             return;
         }
 
-        // 2. CHECK DE ADMIN PARA EL MENÚ
+        // Cargar botones Admin
         const btnAdmin = document.getElementById('btnAdminPanel');
         if(btnAdmin) {
             if(myUser && allUsersMap[myUser] && allUsersMap[myUser].role === 'admin') {
-                btnAdmin.style.display = 'block'; // Mostrar si es admin
-            } else {
-                btnAdmin.style.display = 'none';  // Ocultar si no lo es
-            }
+                btnAdmin.style.display = 'block';
+            } else { btnAdmin.style.display = 'none'; }
         }
 
-        if (myUser && allUsersMap[myUser] && allUsersMap[myUser].following) {
-            myFollowingList = Object.keys(allUsersMap[myUser].following);
+        // Cargar Listas (Seguidos y Bloqueados)
+        if (myUser && allUsersMap[myUser]) {
+            myFollowingList = allUsersMap[myUser].following ? Object.keys(allUsersMap[myUser].following) : [];
+            myBlockedList = allUsersMap[myUser].blocked ? Object.keys(allUsersMap[myUser].blocked) : [];
         } else {
             myFollowingList = [];
+            myBlockedList = [];
         }
         if (allThreadsData.length > 0) renderCurrentView(); 
     });
@@ -191,41 +214,50 @@ function renderThread(key, thread, container) {
     
     const isMe = (myUser === authorName);
     const isFollowing = myFollowingList.includes(authorName);
-    const followText = isFollowing ? "Dejar de seguir" : "Seguir";
-    const followIcon = isFollowing ? "minus-circle" : "plus-circle";
+    const timeAgo = formatTimeAgo(thread.timestamp); // USAR TIEMPO RELATIVO
     
-    let avatarHTML = '';
-    if (!isMe && myUser) {
-        if (isFollowing) {
-             avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
-        } else {
-            avatarHTML = `
-            <div class="avatar-wrapper" onclick="toggleMiniMenu(this)">
-                <img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small">
-                <div class="plus-badge"><i class="fas fa-plus"></i></div>
-                <div class="mini-action-menu">
-                    <div onclick="event.stopPropagation(); openFullProfile('${authorName}')">
-                        <i class="far fa-user"></i> Ir al perfil
-                    </div>
-                    <div onclick="event.stopPropagation(); toggleFollow('${authorName}'); this.closest('.mini-action-menu').classList.remove('show');">
-                        <i class="fas fa-${followIcon}"></i> ${followText}
-                    </div>
-                </div>
-            </div>`;
-        }
-    } else {
-        avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
+    // Avatar y Header
+    let avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
+    if (!isMe && myUser && !isFollowing) {
+        // Lógica del mini-menú del avatar (Seguir)
+        avatarHTML = `
+        <div class="avatar-wrapper" onclick="toggleMiniMenu(this)">
+            <img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small">
+            <div class="plus-badge"><i class="fas fa-plus"></i></div>
+            <div class="mini-action-menu">
+                <div onclick="event.stopPropagation(); openFullProfile('${authorName}')"><i class="far fa-user"></i> Perfil</div>
+                <div onclick="event.stopPropagation(); toggleFollow('${authorName}');"><i class="fas fa-plus-circle"></i> Seguir</div>
+            </div>
+        </div>`;
     }
-    
+
+    // MENÚ DE OPCIONES (3 PUNTOS)
+    // Solo si no soy yo
+    let optionsMenuHTML = '';
+    if (!isMe && myUser) {
+        optionsMenuHTML = `
+        <div class="post-header-right">
+            <button class="options-btn" onclick="togglePostOptions('${key}')"><i class="fas fa-ellipsis-h"></i></button>
+            <div id="opts-${key}" class="post-options-dropdown">
+                <div class="post-option-item" onclick="copyPostLink('${key}')">
+                    <span>Copiar enlace</span> <i class="fas fa-link"></i>
+                </div>
+                <div class="post-option-item" onclick="reportUser('${authorName}')">
+                    <span>Denunciar</span> <i class="fas fa-exclamation-circle" style="color:#ff4d4d;"></i>
+                </div>
+                <div class="post-option-item danger" onclick="blockUser('${authorName}')">
+                    <span>Bloquear</span> <i class="fas fa-user-slash"></i>
+                </div>
+            </div>
+        </div>`;
+    } else {
+        // Si soy yo, quizás opción de eliminar (podríamos añadir después)
+        optionsMenuHTML = `<div class="post-header-right"><span class="time-display">${timeAgo}</span></div>`; 
+    }
+
     let mediaHTML = '';
     if(thread.images && thread.images.length > 1) {
-        mediaHTML = `
-        <div class="media-wrapper">
-            <div class="media-carousel" onscroll="updateImageCounter(this)">
-                ${thread.images.map(img => `<img src="${img}">`).join('')}
-            </div>
-            <div class="image-counter-badge">1/${thread.images.length}</div>
-        </div>`;
+        mediaHTML = `<div class="media-wrapper"><div class="media-carousel" onscroll="updateImageCounter(this)">${thread.images.map(img => `<img src="${img}">`).join('')}</div><div class="image-counter-badge">1/${thread.images.length}</div></div>`;
     } else if (thread.images && thread.images.length === 1) {
         mediaHTML = `<img src="${thread.images[0]}" style="width:100%; margin-top:10px; border-radius:8px;">`;
     } else if(thread.image) {
@@ -233,8 +265,7 @@ function renderThread(key, thread, container) {
     }
 
     const userId = getUserId();
-    const likes = thread.likes || {};
-    const isLiked = likes[userId] ? 'liked' : '';
+    const isLiked = (thread.likes || {})[userId] ? 'liked' : '';
     const commentCount = thread.comments ? Object.keys(thread.comments).length : 0;
 
     div.innerHTML = `
@@ -251,9 +282,11 @@ function renderThread(key, thread, container) {
                     </span>
                 </div>
             </div>
-            <div style="font-size:0.8em; color:#777; margin-left:auto;">${thread.displayDate || ""}</div>
+            ${optionsMenuHTML}
         </div>
-        <h3 style="margin:10px 0 5px 0;">${thread.title}</h3>
+        ${isMe ? '' : `<div style="font-size:0.8em; color:#777; margin-bottom:5px; text-align:right;">${timeAgo}</div>`}
+        
+        <h3 style="margin:5px 0;">${thread.title}</h3>
         <p>${makeLinksClickable(thread.description)}</p>
         ${mediaHTML}
         <div class="thread-actions">
@@ -267,19 +300,28 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 }
-window.toggleMiniMenu = function(element) {
-    document.querySelectorAll('.mini-action-menu.show').forEach(el => {
-        if(el !== element.querySelector('.mini-action-menu')) el.classList.remove('show');
+
+// FUNCIONES DEL MENÚ DE POSTS
+window.togglePostOptions = function(key) {
+    // Cerrar otros abiertos
+    document.querySelectorAll('.post-options-dropdown.show').forEach(el => {
+        if(el.id !== `opts-${key}`) el.classList.remove('show');
     });
-    const menu = element.querySelector('.mini-action-menu');
+    const menu = document.getElementById(`opts-${key}`);
     if(menu) menu.classList.toggle('show');
-}
-document.addEventListener('click', function(e) {
-    if(!e.target.closest('.avatar-wrapper')) {
-        document.querySelectorAll('.mini-action-menu.show').forEach(el => el.classList.remove('show'));
+};
+
+// Cerrar menús al hacer click fuera
+window.addEventListener('click', function(e) {
+    if (!e.target.closest('.post-header-right')) {
+        document.querySelectorAll('.post-options-dropdown.show').forEach(el => el.classList.remove('show'));
     }
 });
 
+window.copyPostLink = function(key) {
+    const link = `${window.location.origin}/#post_${key}`; // Simulación de link
+    navigator.clipboard.writeText(link).then(() => showToast("Enlace copiado al portapapeles", "success"));
+};
 function renderFullProfile(container) {
     const target = viewingUserProfile || localStorage.getItem('savedRobloxUser');
     if (!target) return showToast("Inicia sesión", "error");
@@ -291,19 +333,17 @@ function renderFullProfile(container) {
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
     const amIAdmin = allUsersMap[myUser]?.role === 'admin';
     const isBanned = ud.isBanned === true;
+    
+    // Check si lo tengo bloqueado
+    const isBlockedByMe = myBlockedList.includes(target);
 
     let displayNameToShow = ud.displayName || target;
     let avatarToShow = ud.avatar || DEFAULT_AVATAR;
     let bioToShow = ud.bio || "Sin biografía";
 
     if (isBanned) {
-        if (amIAdmin) {
-            displayNameToShow += " (SUSPENDIDO)";
-        } else {
-            displayNameToShow = "Usuario Eliminado";
-            avatarToShow = DEFAULT_AVATAR;
-            bioToShow = "";
-        }
+        if (amIAdmin) displayNameToShow += " (SUSPENDIDO)";
+        else { displayNameToShow = "Usuario Eliminado"; avatarToShow = DEFAULT_AVATAR; bioToShow = ""; }
     }
 
     const isFollowing = myFollowingList.includes(target);
@@ -318,15 +358,24 @@ function renderFullProfile(container) {
         if (amIAdmin && isBanned) {
             actionButtons = `<button onclick="unbanUser('${target}')" style="background:#00e676; width:100%; font-weight:bold;">DESBANEAR USUARIO</button>`;
         } else if (!isBanned) {
-            actionButtons = `
-                <div style="display:flex; gap:10px; justify-content:center;">
-                    <button onclick="toggleFollow('${target}')" style="${btnStyle}; flex:1;">${followBtnText}</button>
-                    <button onclick="reportUser('${target}')" style="background:#444; width:50px; display:flex; justify-content:center; align-items:center;" title="Reportar">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </button>
-                    ${amIAdmin ? `<button onclick="banUser('${target}')" style="background:#cc0000; width:50px; display:flex; justify-content:center; align-items:center;" title="BANEAR"><i class="fas fa-ban"></i></button>` : ''}
-                </div>
-            `;
+            // USUARIO NORMAL ACTIVO
+            // Si lo tengo bloqueado, mostrar botón DESBLOQUEAR
+            if (isBlockedByMe) {
+                actionButtons = `<button onclick="unblockUser('${target}')" style="background:#555; width:100%;">Desbloquear</button>`;
+            } else {
+                actionButtons = `
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button onclick="toggleFollow('${target}')" style="${btnStyle}; flex:1;">${followBtnText}</button>
+                        <button onclick="reportUser('${target}')" style="background:#444; width:50px; display:flex; justify-content:center; align-items:center;" title="Reportar">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </button>
+                        <button onclick="blockUser('${target}')" style="background:#444; width:50px; display:flex; justify-content:center; align-items:center;" title="Bloquear">
+                            <i class="fas fa-user-slash" style="color:#ff4d4d;"></i>
+                        </button>
+                        ${amIAdmin ? `<button onclick="banUser('${target}')" style="background:#cc0000; width:50px; display:flex; justify-content:center; align-items:center;" title="BANEAR"><i class="fas fa-ban"></i></button>` : ''}
+                    </div>
+                `;
+            }
         }
     }
     
@@ -347,7 +396,7 @@ function renderFullProfile(container) {
             </div>
         </div>
         <div class="profile-bio-section">${makeLinksClickable(bioToShow)}</div>
-        ${!isBanned ? `
+        ${!isBanned && !isBlockedByMe ? `
         <div class="profile-stats-bar">
             <div class="p-stat"><span>${formatCount(ud.followingCount)}</span><label>Siguiendo</label></div>
             <div class="p-stat"><span>${formatCount(ud.followersCount)}</span><label>Seguidores</label></div>
@@ -357,53 +406,20 @@ function renderFullProfile(container) {
         </div>
     `;
     container.appendChild(header);
-    if (!isBanned) {
+    if (!isBanned && !isBlockedByMe) {
         allThreadsData.forEach(([k, t]) => { if(t.username === target) renderThread(k, t, container); });
+    } else if (isBlockedByMe) {
+        container.innerHTML += '<p style="text-align:center; padding:20px; color:#777;">Has bloqueado a este usuario.</p>';
     }
 }
-
-window.openAdminPanel = function() {
-    const myUser = localStorage.getItem('savedRobloxUser');
-    if (!allUsersMap[myUser] || allUsersMap[myUser].role !== 'admin') {
-        return showToast("Acceso denegado.", "error");
-    }
-
-    const modal = document.getElementById('adminModal');
-    const container = document.getElementById('adminReportsList');
-    if(modal) modal.style.display = 'block';
-    
-    get(child(ref(db), 'reports')).then((snapshot) => {
-        if (snapshot.exists()) {
-            const reports = snapshot.val();
-            container.innerHTML = ''; 
-            Object.entries(reports).forEach(([key, r]) => {
-                const date = new Date(r.timestamp).toLocaleDateString();
-                const div = document.createElement('div');
-                div.style.cssText = "background:#333; margin-bottom:10px; padding:10px; border-radius:8px; border:1px solid #555;";
-                div.innerHTML = `
-                    <div style="font-size:0.9em; color:#aaa; margin-bottom:5px;">${date} | De: <strong>${r.reportedBy}</strong></div>
-                    <div style="color:white; font-weight:bold;">Reportado: <span style="color:#ff4d4d;">${r.reportedUser}</span></div>
-                    <div style="background:#222; padding:5px; border-radius:4px; font-size:0.9em; margin:5px 0;">Motivo: ${r.reason}</div>
-                    <div style="display:flex; gap:10px;">
-                        <button onclick="deleteReport('${key}')" style="background:#555; font-size:0.8em;">Descartar</button>
-                        <button onclick="banUserFromPanel('${r.reportedUser}', '${key}')" style="background:#cc0000; font-size:0.8em;">BANEAR</button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        } else {
-            container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Sin reportes.</p>';
-        }
-    });
-};
-
-window.deleteReport = function(k) { set(ref(db, `reports/${k}`), null).then(() => { showToast("Reporte borrado", "success"); openAdminPanel(); }); };
-window.banUserFromPanel = function(u, k) { window.banUser(u); set(ref(db, `reports/${k}`), null); setTimeout(() => openAdminPanel(), 1000); };
 function renderPostList(container, isSearch) {
     const filtered = allThreadsData.filter(([k, t]) => {
-        // FILTRO DE BANEADOS: No mostrar posts de gente baneada
         const author = allUsersMap[t.username];
+        // 1. Ocultar si está baneado globalmente
         if (author && author.isBanned === true) return false; 
+        
+        // 2. Ocultar si YO lo tengo bloqueado
+        if (myBlockedList.includes(t.username)) return false;
 
         if (!isSearch) return true;
         const term = searchTerm.toLowerCase();
@@ -433,13 +449,15 @@ function renderUserSearch(container) {
         const isVerified = verifiedUsersList.includes(username.toLowerCase());
         const verifIcon = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
 
+        // Filtro Baneados
         if (uData.isBanned === true) {
-            if (amIAdmin) {
-                displayName += " (BANEADO)";
-            } else {
-                displayName = "Usuario Eliminado";
-                avatar = DEFAULT_AVATAR;
-            }
+            if (amIAdmin) displayName += " (BANEADO)";
+            else { displayName = "Usuario Eliminado"; avatar = DEFAULT_AVATAR; }
+        }
+        
+        // Filtro Bloqueados
+        if (myBlockedList.includes(username)) {
+            displayName += " (Bloqueado)";
         }
 
         const div = document.createElement('div');
@@ -509,6 +527,38 @@ window.saveProfileChanges = async function() {
     finally { btn.innerText = "GUARDAR CAMBIOS"; }
 };
 
+// --- SISTEMA BLOQUEO PERSONAL ---
+window.blockUser = function(targetUser) {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!myUser) return;
+    
+    showConfirm(`¿Bloquear a ${targetUser}? No verás sus publicaciones.`, () => {
+        const updates = {};
+        updates[`users/${myUser}/blocked/${targetUser}`] = true;
+        // Opcional: Dejar de seguir automáticamente
+        updates[`users/${myUser}/following/${targetUser}`] = null;
+        updates[`users/${targetUser}/followers/${myUser}`] = null;
+        
+        update(ref(db), updates)
+            .then(() => {
+                showToast("Usuario bloqueado.", "success");
+                renderCurrentView(); // Recargar para ocultar sus posts
+            });
+    });
+};
+
+window.unblockUser = function(targetUser) {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    showConfirm(`¿Desbloquear a ${targetUser}?`, () => {
+        set(ref(db, `users/${myUser}/blocked/${targetUser}`), null)
+            .then(() => {
+                showToast("Usuario desbloqueado.", "success");
+                renderCurrentView();
+            });
+    });
+};
+
+// --- REPORTES Y ADMIN ---
 window.reportUser = function(targetUser) {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) return showToast("Inicia sesión primero", "error");
@@ -545,6 +595,38 @@ window.unbanUser = function(targetUser) {
             .catch(e => showToast("Error", "error"));
     });
 };
+
+window.openAdminPanel = function() {
+    const myUser = localStorage.getItem('savedRobloxUser');
+    if (!allUsersMap[myUser] || allUsersMap[myUser].role !== 'admin') return showToast("Acceso denegado.", "error");
+    const modal = document.getElementById('adminModal');
+    const container = document.getElementById('adminReportsList');
+    if(modal) modal.style.display = 'block';
+    
+    get(child(ref(db), 'reports')).then((snapshot) => {
+        if (snapshot.exists()) {
+            const reports = snapshot.val();
+            container.innerHTML = ''; 
+            Object.entries(reports).forEach(([key, r]) => {
+                const date = new Date(r.timestamp).toLocaleDateString();
+                const div = document.createElement('div');
+                div.style.cssText = "background:#333; margin-bottom:10px; padding:10px; border-radius:8px; border:1px solid #555;";
+                div.innerHTML = `
+                    <div style="font-size:0.9em; color:#aaa; margin-bottom:5px;">${date} | De: <strong>${r.reportedBy}</strong></div>
+                    <div style="color:white; font-weight:bold;">Reportado: <span style="color:#ff4d4d;">${r.reportedUser}</span></div>
+                    <div style="background:#222; padding:5px; border-radius:4px; font-size:0.9em; margin:5px 0;">Motivo: ${r.reason}</div>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="deleteReport('${key}')" style="background:#555; font-size:0.8em;">Descartar</button>
+                        <button onclick="banUserFromPanel('${r.reportedUser}', '${key}')" style="background:#cc0000; font-size:0.8em;">BANEAR</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        } else { container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Sin reportes.</p>'; }
+    });
+};
+window.deleteReport = function(k) { set(ref(db, `reports/${k}`), null).then(() => { showToast("Reporte borrado", "success"); openAdminPanel(); }); };
+window.banUserFromPanel = function(u, k) { window.banUser(u); set(ref(db, `reports/${k}`), null); setTimeout(() => openAdminPanel(), 1000); };
 
 window.toggleFollow = function(target) {
     const me = localStorage.getItem('savedRobloxUser');
@@ -602,7 +684,7 @@ window.registerSystem = async function() {
     } catch(e) { showToast("Error al registrar", "error"); }
 };
 
-window.logoutSystem = () => showConfirm("¿Cerrar sesión?", () => { localStorage.clear(); window.location.reload(); });
+window.logoutSystem = () => showConfirm("¿Cerrar sesión?", () => { localStorage.clear(); window.location.href = window.location.href; });
 const searchIn = document.getElementById('searchInput');
 if(searchIn) searchIn.oninput = (e) => { searchTerm = e.target.value.trim(); renderCurrentView(); };
 window.toggleLike = (k, c, b) => {
