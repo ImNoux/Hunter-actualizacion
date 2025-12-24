@@ -22,7 +22,8 @@
                 </div>
             </div>
             <h1 onclick="changeSection('Home')">COMUNIDAD ARC</h1>
-            <div style="width: 40px;"></div> </div>
+            <div style="width: 40px;"></div>
+        </div>
     </header>
 
     <div id="searchContainer">
@@ -48,7 +49,7 @@
         <div class="nav-item" id="nav-activity" onclick="changeSection('Activity')">
             <i class="fas fa-heart"></i>
         </div>
-        <div class="nav-item" id="nav-profile" onclick="changeSection('Perfil')">
+        <div class="nav-item" id="nav-profile" onclick="openMyProfile()">
             <i class="fas fa-user"></i>
         </div>
     </nav>
@@ -64,21 +65,17 @@
                     <option value="Elite">Elite</option>
                     <option value="Mentor">Mentor</option>
                     <option value="Designer">Designer</option>
-                    <option
-value="Top Model">Top Model</option>
-                    <option
-value="Cheerleader">Cheerleader</option>
-                    <option
-value="Hunter">Hunter</option>
-                    <option
-value="Moon & Sun">Moon & Sun</option>
+                    <option value="Top Model">Top Model</option>
+                    <option value="Cheerleader">Cheerleader</option>
+                    <option value="Hunter">Hunter</option>
+                    <option value="Moon & Sun">Moon & Sun</option>
                 </select>
                 <textarea id="description" placeholder="¿Qué estás pensando?" required></textarea>
                 
                 <label for="imageFile" class="upload-btn-gray">
-                    <i class="fas fa-image"></i> Agregar imagen
+                    <i class="fas fa-images"></i> Agregar imágenes
                 </label>
-                <input type="file" id="imageFile" accept="image/*" style="display:none;">
+                <input type="file" id="imageFile" accept="image/*" multiple style="display:none;">
                 <span id="fileName" style="font-size:0.8em; color:#00a2ff;"></span>
                 
                 <button type="submit" id="submitBtn">PUBLICAR</button>
@@ -140,7 +137,7 @@ value="Moon & Sun">Moon & Sun</option>
         <div class="info-content">
             <span class="close-modal" onclick="closeModal('updatesModal')">&times;</span>
             <h3>Actualizaciones</h3>
-            <p>Versión 2.5: Nuevo diseño de perfiles, sistema de rangos y corrección de navegación.</p>
+            <p>Versión 3.1: Corrección de perfil y sistema de verificación mejorado.</p>
         </div>
     </div>
 
@@ -153,12 +150,10 @@ value="Moon & Sun">Moon & Sun</option>
         </div>
     </div>
 
-    <div id="toastContainer" class="toast-container"></div>
-
     <div id="confirmModal" class="modal-overlay" style="z-index: 5000;">
         <div class="info-content" style="max-width: 300px; padding: 20px;">
-            <h3>Cerrar Sesión</h3>
-            <p id="confirmText">¿Salir de la cuenta?</p>
+            <h3>Confirmación</h3>
+            <p id="confirmText">¿Estás seguro?</p>
             <div style="display:flex; justify-content:center; gap:10px;">
                 <button onclick="closeModal('confirmModal')" style="background:#333; color:white; border:none; padding:8px 20px; border-radius:4px;">No</button>
                 <button id="confirmActionBtn" style="background:#ff4d4d; color:white; border:none; padding:8px 20px; border-radius:4px;">Sí</button>
@@ -166,6 +161,7 @@ value="Moon & Sun">Moon & Sun</option>
         </div>
     </div>
 
+    <div id="toastContainer" class="toast-container"></div>
     <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
     
     <script type="module" src="script.js"></script>
@@ -179,7 +175,11 @@ value="Moon & Sun">Moon & Sun</option>
         }
         document.getElementById('imageFile').onchange = function() {
             if(this.files && this.files.length > 0) {
-                document.getElementById('fileName').textContent = this.files[0].name;
+                if(this.files.length > 1) {
+                    document.getElementById('fileName').textContent = `${this.files.length} imágenes seleccionadas`;
+                } else {
+                    document.getElementById('fileName').textContent = this.files[0].name;
+                }
             }
         };
     </script>
