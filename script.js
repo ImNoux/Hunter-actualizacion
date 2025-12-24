@@ -23,7 +23,7 @@ const verifiedRef = ref(db, 'verified');
 const threadsPerPage = 10;
 let currentPage = 1;
 let searchTerm = ''; 
-let currentSection = 'Home'; // Inicia en el Home (Casita)
+let currentSection = 'Home'; 
 let viewingUserProfile = ''; 
 let allThreadsData = []; 
 let verifiedUsersList = []; 
@@ -112,6 +112,7 @@ function initFirebaseListener() {
 
     onValue(verifiedRef, (snapshot) => {
         const data = snapshot.val();
+        // Convertimos a minúsculas para comparar fácil
         verifiedUsersList = data ? Object.keys(data).map(name => name.toLowerCase()) : [];
         renderCurrentView(); 
     });
@@ -131,11 +132,19 @@ function initFirebaseListener() {
         });
     }
 }
+
 // --- PARTE 2: RENDERIZADO DE VISTAS ---
 
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
     currentPage = 1;
+
+    // --- PERSISTENCIA: GUARDAR SECCIÓN ---
+    localStorage.setItem('lastSection', sectionName);
+    // Si salimos de perfil, borramos el perfil guardado para que no se quede pegado en otro usuario
+    if(sectionName !== 'Perfil') {
+        localStorage.removeItem('lastVisitedProfile');
+    }
     
     // Actualizar iconos de la barra inferior (DOCK)
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -154,7 +163,8 @@ window.changeSection = function(sectionName) {
     }
     
     renderCurrentView();
-    window.scrollTo(0, 0);
+    // Solo scrollear arriba si vamos al home, para que se sienta fluido
+    if(sectionName === 'Home') window.scrollTo(0, 0);
 };
 
 function renderCurrentView() {
@@ -164,7 +174,7 @@ function renderCurrentView() {
     container.innerHTML = '';
     if(noMsg) noMsg.style.display = 'none';
 
-    // 1. ACTIVIDAD (CORAZÓN)
+    // 1. ACTIVIDAD
     if (currentSection === 'Activity') {
         renderActivity(container);
         return;
@@ -179,7 +189,6 @@ function renderCurrentView() {
     // 3. BUSCADOR Y HOME
     if (currentSection === 'Busqueda') {
         renderUserSearch(container);
-        // Si hay texto, buscamos posts también debajo de los usuarios
         if (searchTerm) renderPostList(container, true); 
         return;
     }
@@ -188,7 +197,7 @@ function renderCurrentView() {
     renderPostList(container, false);
 }
 
-// RENDERIZAR ACTIVIDAD (Simulada para demo)
+// RENDERIZAR ACTIVIDAD
 function renderActivity(container) {
     const myUser = localStorage.getItem('savedRobloxUser');
     if (!myUser) {
@@ -199,7 +208,6 @@ function renderActivity(container) {
     container.innerHTML = '<h3 style="padding:15px; margin:0; border-bottom:1px solid #333; font-size:1.2em;">Actividad</h3>';
     let activityFound = false;
 
-    // Buscar nuevos seguidores
     const myData = allUsersMap[myUser];
     if (myData && myData.followers) {
         Object.keys(myData.followers).forEach(followerUser => {
@@ -234,7 +242,7 @@ function renderPostList(container, isSearch) {
                     thread.description?.toLowerCase().includes(term) ||
                     thread.username?.toLowerCase().includes(term));
         }
-        return true; // Home muestra todo
+        return true; 
     });
 
     if (filtered.length > 0) {
@@ -261,13 +269,17 @@ function renderUserSearch(container) {
         container.innerHTML += `<h4 style="padding:10px 15px; margin:0; color:#888;">Usuarios</h4>`;
         foundUsers.forEach(username => {
             const uData = allUsersMap[username];
+            // Lógica verificado búsqueda
+            const isVerified = verifiedUsersList.includes(username.toLowerCase());
+            const verifIcon = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
+
             const div = document.createElement('div');
             div.className = 'user-search-result';
             div.onclick = () => openFullProfile(username);
             div.innerHTML = `
                 <img src="${uData.avatar || DEFAULT_AVATAR}" class="user-search-avatar">
                 <div class="user-search-info">
-                    <h4 style="color:#fff; margin:0;">${uData.displayName || username}</h4>
+                    <h4 style="color:#fff; margin:0;">${uData.displayName || username} ${verifIcon}</h4>
                     <p style="color:#00a2ff; margin:0;">@${uData.customHandle || username}</p>
                 </div>
             `;
@@ -286,14 +298,26 @@ function renderFullProfile(container) {
     const userData = allUsersMap[targetUser] || {};
     const isMe = (targetUser === localStorage.getItem('savedRobloxUser'));
     
+    // --- LÓGICA VERIFICADO Y RANGO EN PERFIL ---
+    const isVerified = verifiedUsersList.includes(targetUser.toLowerCase());
+    const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon" style="font-size:1em;"></i>' : '';
+    const userRole = userData.role || userData.status || "Miembro"; // Usa status si no hay rol
+
     const header = document.createElement('div');
     header.className = 'profile-header-container';
     header.innerHTML = `
         <div class="profile-top-section">
             <img src="${userData.avatar || DEFAULT_AVATAR}" class="profile-avatar-big" style="width:80px; height:80px; border-radius:50%;">
             <div class="profile-info-column" style="margin-left:15px;">
-                <h2 style="margin:0; color:#fff;">${userData.displayName || targetUser}</h2>
-                <span style="color:#00a2ff;">@${userData.customHandle || targetUser}</span>
+                
+                <div class="username-styled" style="font-size:1.4em;">
+                    ${userData.displayName || targetUser} ${verifiedIconHTML}
+                </div>
+                <div class="user-rank-styled" style="font-size:0.95em; margin-top:4px;">
+                    ${userRole}
+                </div>
+
+                <span style="color:#00a2ff; font-size:0.9em; display:block; margin-top:5px;">@${userData.customHandle || targetUser}</span>
             </div>
         </div>
         
@@ -324,27 +348,40 @@ function renderThread(key, thread, container) {
     const authorName = thread.username;
     const authorData = allUsersMap[authorName] || {};
     const avatar = authorData.avatar || DEFAULT_AVATAR;
-    const displayName = authorData.customHandle || authorName;
+    
+    // --- LÓGICA VERIFICADO Y RANGO EN POSTS ---
+    const isVerified = verifiedUsersList.includes(authorName.toLowerCase());
+    const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon" title="Verificado"></i>' : '';
+    // Usamos la categoría del post como "Rango" visual
+    const userRank = thread.category || "Miembro"; 
+
     const userId = getUserId();
     const isLiked = thread.likes && thread.likes[userId] ? 'liked' : '';
     
-    // Media
     let mediaHTML = '';
     if(thread.image) mediaHTML = `<img src="${thread.image}" style="width:100%; margin-top:10px; border-radius:8px;">`;
-    // Aquí puedes añadir la lógica del carrusel si la necesitas, simplificado por ahora:
     if(thread.images && thread.images.length > 0) mediaHTML = `<img src="${thread.images[0]}" style="width:100%; margin-top:10px; border-radius:8px;">`;
 
     div.innerHTML = `
         <div class="post-header">
             <img src="${avatar}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">
-            <div>
-                <strong style="color:#fff; cursor:pointer;" onclick="openFullProfile('${authorName}')">${displayName}</strong>
-                <div style="font-size:0.8em; color:#777;">${thread.displayDate || ""}</div>
+            
+            <div class="user-info-display">
+                <div class="username-styled" onclick="openFullProfile('${authorName}')">
+                    ${authorData.displayName || authorName} ${verifiedIconHTML}
+                </div>
+                <div class="user-rank-styled">
+                    ${userRank}
+                </div>
             </div>
+
+            <div style="font-size:0.8em; color:#777; margin-left:auto;">${thread.displayDate || ""}</div>
         </div>
+        
         <h3 style="margin:10px 0 5px 0;">${thread.title}</h3>
         <p>${makeLinksClickable(thread.description)}</p>
         ${mediaHTML}
+        
         <div class="thread-actions">
             <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${thread.likeCount||0}, this)">
                 <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${formatCount(thread.likeCount)}
@@ -356,6 +393,7 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 }
+
 // --- PARTE 3: GESTIÓN DE USUARIOS ---
 
 window.loginSystem = async function() {
@@ -403,6 +441,8 @@ window.logoutSystem = function() {
     showConfirm("¿Seguro que quieres cerrar sesión?", () => {
         localStorage.removeItem('savedRobloxUser');
         localStorage.removeItem('userId');
+        localStorage.removeItem('lastSection'); // Limpiamos historial
+        localStorage.removeItem('lastVisitedProfile');
         window.location.reload();
     });
 };
@@ -427,12 +467,8 @@ window.saveProfileChanges = async function() {
     const oldText = btn.innerText; 
     btn.innerText = "Guardando...";
 
-    // Validaciones de tiempo (Simuladas)
     const updates = {};
-    const now = Date.now();
     
-    // Aquí iría la lógica de 7 y 15 días si la base de datos tuviera las fechas guardadas
-    // Por simplicidad en esta versión consolidada, guardamos directo:
     updates[`users/${myUser}/displayName`] = document.getElementById('editNameInput').value;
     updates[`users/${myUser}/customHandle`] = document.getElementById('editHandleInput').value;
     updates[`users/${myUser}/bio`] = document.getElementById('editBioInput').value;
@@ -442,17 +478,18 @@ window.saveProfileChanges = async function() {
         await update(ref(db), updates);
         showToast("Perfil actualizado", "success");
         closeModal('editProfileModal');
-        renderCurrentView(); // Refrescar vista
+        renderCurrentView(); 
     } catch(e) { showToast("Error al guardar", "error"); }
     finally { btn.innerText = oldText; }
 };
 
 window.openFullProfile = function(username) {
     viewingUserProfile = username || localStorage.getItem('savedRobloxUser');
+    // --- PERSISTENCIA: Guardamos a qué usuario estamos viendo ---
+    localStorage.setItem('lastVisitedProfile', viewingUserProfile);
     changeSection('Perfil');
 };
-  
-        // --- PARTE 4: INTERACCIONES Y EVENTOS ---
+  // --- PARTE 4: INTERACCIONES Y EVENTOS ---
 
 const searchIn = document.getElementById('searchInput');
 if(searchIn) {
@@ -487,7 +524,7 @@ window.toggleLike = function(key, count, btn) {
     if(!localStorage.getItem('savedRobloxUser')) { showToast("Inicia sesión para dar like", "error"); return; }
     
     const userId = getUserId();
-    const isLiked = btn.querySelector('i').classList.contains('fas'); // Check visual rápido
+    const isLiked = btn.querySelector('i').classList.contains('fas'); 
     
     const updates = {};
     updates[`threads/${key}/likeCount`] = isLiked ? count - 1 : count + 1;
@@ -596,14 +633,26 @@ window.openComments = function(key) {
     };
 };
 
-// INICIALIZACIÓN
+// --- INICIALIZACIÓN Y PERSISTENCIA ---
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
-    changeSection('Home'); // Arrancar en Home
     
+    // --- RECUPERAR DONDE ESTABA EL USUARIO ---
+    const savedSection = localStorage.getItem('lastSection');
+    const savedProfile = localStorage.getItem('lastVisitedProfile');
     const user = localStorage.getItem('savedRobloxUser');
+
+    if(savedProfile) viewingUserProfile = savedProfile;
+
     if(user) {
         document.getElementById('menuLogin').style.display = 'none';
         document.getElementById('menuLogout').style.display = 'block';
+    }
+
+    // Si había una sección guardada (y no es nula), ir a ella. Si no, al Home.
+    if (savedSection && savedSection !== 'null') {
+        changeSection(savedSection);
+    } else {
+        changeSection('Home');
     }
 });
