@@ -26,8 +26,7 @@ let viewingUserProfile = '';
 let allThreadsData = []; 
 let verifiedUsersList = []; 
 let allUsersMap = {}; 
-let myFollowingList = []; 
-
+let myFollowingList = [];
 // --- TOASTS ---
 window.showToast = function(message, type = 'info') {
     const container = document.getElementById('toastContainer');
@@ -60,26 +59,18 @@ function makeLinksClickable(text) {
     return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" style="color:#00a2ff; text-decoration:underline;">${url}</a>`);
 }
 
-// --- NUEVO FORMATO INTELIGENTE (Soluciona el "1000 mil") ---
+// --- NUEVO FORMATO INTELIGENTE (PROTEGIDO) ---
 function formatCount(num) {
-    if (!num) return 0;
+    if (!num || num < 0) return 0; // CORRECCIÓN: Nunca devuelve negativo
     
-    // Si ya es 1 millón o más
     if (num >= 1000000) {
         return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' mill.';
     }
-    
-    // Si es miles (ej: 1000 a 999,999)
     if (num >= 1000) {
-        // Calculamos cómo se vería en miles
         let val = (num / 1000).toFixed(1).replace(/\.0$/, '');
-        
-        // AQUÍ ESTÁ EL TRUCO: Si el redondeo nos da "1000", lo cambiamos a "1 mill."
         if (val === '1000') return '1 mill.';
-        
         return val + ' mil';
     }
-    
     return num;
 }
 
@@ -121,7 +112,12 @@ function initFirebaseListener() {
 window.changeSection = function(sectionName) {
     currentSection = sectionName;
     localStorage.setItem('lastSection', sectionName);
-    if(sectionName !== 'Perfil') localStorage.removeItem('lastVisitedProfile');
+    
+    // CORRECCIÓN: Solo limpiamos el perfil guardado si NO vamos a Perfil.
+    if(sectionName !== 'Perfil') {
+        localStorage.removeItem('lastVisitedProfile');
+        viewingUserProfile = ''; 
+    }
     
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const sc = document.getElementById('searchContainer');
@@ -144,6 +140,12 @@ window.openMyProfile = function() {
     changeSection('Perfil'); 
 };
 
+window.openFullProfile = (u) => { 
+    viewingUserProfile = u; 
+    localStorage.setItem('lastVisitedProfile', u); 
+    changeSection('Perfil'); 
+};
+
 function renderCurrentView() {
     const container = document.querySelector('.thread-container');
     if(!container) return;
@@ -158,17 +160,13 @@ function renderCurrentView() {
     }
     renderPostList(container, false);
 }
-
 // --- FUNCIÓN CONTADOR FOTOS ---
 window.updateImageCounter = function(carousel) {
     const width = carousel.offsetWidth;
     const currentIndex = Math.round(carousel.scrollLeft / width) + 1;
     const totalImages = carousel.childElementCount;
-    
     const badge = carousel.parentElement.querySelector('.image-counter-badge');
-    if(badge) {
-        badge.innerText = `${currentIndex}/${totalImages}`;
-    }
+    if(badge) badge.innerText = `${currentIndex}/${totalImages}`;
 };
 
 // --- RENDERIZADO DE POSTS ---
@@ -179,35 +177,38 @@ function renderThread(key, thread, container) {
     const authorName = thread.username || "Desconocido";
     const authorData = allUsersMap[authorName] || {};
     const myUser = localStorage.getItem('savedRobloxUser');
-    
-    // Verificado
     const isVerified = authorName && verifiedUsersList.includes(authorName.toLowerCase());
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
     
-    // Avatar + Botón Seguir (Menú)
+    // Lógica Seguir/Dejar de seguir en menú flotante
     const isMe = (myUser === authorName);
     const isFollowing = myFollowingList.includes(authorName);
+    const followText = isFollowing ? "Dejar de seguir" : "Seguir";
+    const followIcon = isFollowing ? "minus-circle" : "plus-circle";
     
     let avatarHTML = '';
-    if (!isMe && !isFollowing && myUser) {
-        avatarHTML = `
-        <div class="avatar-wrapper" onclick="toggleMiniMenu(this)">
-            <img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small">
-            <div class="plus-badge"><i class="fas fa-plus"></i></div>
-            <div class="mini-action-menu">
-                <div onclick="event.stopPropagation(); openFullProfile('${authorName}')">
-                    <i class="far fa-user"></i> Ir al perfil
+    if (!isMe && myUser) {
+        if (isFollowing) {
+             avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
+        } else {
+            avatarHTML = `
+            <div class="avatar-wrapper" onclick="toggleMiniMenu(this)">
+                <img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small">
+                <div class="plus-badge"><i class="fas fa-plus"></i></div>
+                <div class="mini-action-menu">
+                    <div onclick="event.stopPropagation(); openFullProfile('${authorName}')">
+                        <i class="far fa-user"></i> Ir al perfil
+                    </div>
+                    <div onclick="event.stopPropagation(); toggleFollow('${authorName}'); this.closest('.mini-action-menu').classList.remove('show');">
+                        <i class="fas fa-${followIcon}"></i> ${followText}
+                    </div>
                 </div>
-                <div onclick="event.stopPropagation(); toggleFollow('${authorName}'); this.closest('.mini-action-menu').classList.remove('show');">
-                    <i class="fas fa-plus-circle"></i> Seguir
-                </div>
-            </div>
-        </div>`;
+            </div>`;
+        }
     } else {
         avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
     }
     
-    // Carrusel con contador
     let mediaHTML = '';
     if(thread.images && thread.images.length > 1) {
         mediaHTML = `
@@ -244,11 +245,9 @@ function renderThread(key, thread, container) {
             </div>
             <div style="font-size:0.8em; color:#777; margin-left:auto;">${thread.displayDate || ""}</div>
         </div>
-        
         <h3 style="margin:10px 0 5px 0;">${thread.title}</h3>
         <p>${makeLinksClickable(thread.description)}</p>
         ${mediaHTML}
-        
         <div class="thread-actions">
             <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${thread.likeCount||0}, this)">
                 <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${formatCount(thread.likeCount)}
@@ -260,8 +259,6 @@ function renderThread(key, thread, container) {
     `;
     container.appendChild(div);
 }
-
-// Menú Avatar
 window.toggleMiniMenu = function(element) {
     document.querySelectorAll('.mini-action-menu.show').forEach(el => {
         if(el !== element.querySelector('.mini-action-menu')) el.classList.remove('show');
@@ -284,7 +281,11 @@ function renderFullProfile(container) {
     const isVerified = verifiedUsersList.includes(target.toLowerCase());
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
     
-    // Estado flotante
+    // Detectar si lo sigo para cambiar el texto del botón
+    const isFollowing = myFollowingList.includes(target);
+    const followBtnText = isFollowing ? "Dejar de seguir" : "Seguir";
+    const btnStyle = isFollowing ? "background-color: #555;" : ""; 
+
     const userStatus = ud.status && ud.status.trim() !== "" 
         ? `<div class="status-pill">${ud.status}</div>` 
         : '';
@@ -312,13 +313,14 @@ function renderFullProfile(container) {
             <div class="p-stat"><span>${formatCount(ud.followingCount)}</span><label>Siguiendo</label></div>
             <div class="p-stat"><span>${formatCount(ud.followersCount)}</span><label>Seguidores</label></div>
         </div>
-        ${isMe ? `<button onclick="openEditProfileModal()">Editar perfil</button>` : `<button onclick="toggleFollow('${target}')">Seguir</button>`}
+        ${isMe 
+            ? `<button onclick="openEditProfileModal()">Editar perfil</button>` 
+            : `<button onclick="toggleFollow('${target}')" style="${btnStyle}">${followBtnText}</button>`
+        }
     `;
     container.appendChild(header);
-    
     allThreadsData.forEach(([k, t]) => { if(t.username === target) renderThread(k, t, container); });
 }
-
 function renderPostList(container, isSearch) {
     const filtered = allThreadsData.filter(([k, t]) => {
         if (!isSearch) return true;
@@ -330,10 +332,10 @@ function renderPostList(container, isSearch) {
     if (filtered.length) filtered.forEach(([k, t]) => renderThread(k, t, container));
     else container.innerHTML += '<p style="text-align:center; padding:20px; color:#777;">Sin resultados.</p>';
 }
+
 function renderUserSearch(container) {
     if (!searchTerm) { container.innerHTML = '<p style="text-align:center; color:#777; margin-top:20px;">Busca personas...</p>'; return; }
     const term = searchTerm.toLowerCase();
-    
     Object.keys(allUsersMap).filter(u => 
         u.toLowerCase().includes(term) || 
         (allUsersMap[u].displayName && allUsersMap[u].displayName.toLowerCase().includes(term))
@@ -341,7 +343,6 @@ function renderUserSearch(container) {
         const uData = allUsersMap[username];
         const isVerified = verifiedUsersList.includes(username.toLowerCase());
         const verifIcon = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
-        
         const div = document.createElement('div');
         div.className = 'user-search-result';
         div.onclick = () => openFullProfile(username);
@@ -371,7 +372,6 @@ function renderActivity(container) {
         });
     } else { container.innerHTML += '<p style="text-align:center; padding:40px; color:#555;">Sin actividad.</p>'; }
 }
-
 // --- EDICIÓN PERFIL (15 DÍAS) ---
 window.openEditProfileModal = function() {
     const d = allUsersMap[localStorage.getItem('savedRobloxUser')] || {};
@@ -380,7 +380,8 @@ window.openEditProfileModal = function() {
     document.getElementById('editHandleInput').value = d.customHandle || "";
     document.getElementById('editBioInput').value = d.bio || "";
     document.getElementById('editStatusInput').value = d.status || "";
-    openModal('editProfileModal');
+    const modal = document.getElementById('editProfileModal') || document.getElementById('editModal');
+    if(modal) modal.style.display = 'block';
 };
 
 window.saveProfileChanges = async function() {
@@ -411,23 +412,49 @@ window.saveProfileChanges = async function() {
     try { 
         await update(ref(db), updates); 
         showToast("Perfil actualizado", "success"); 
-        closeModal('editProfileModal'); 
+        const modal = document.getElementById('editProfileModal') || document.getElementById('editModal');
+        if(modal) modal.style.display = 'none';
     } 
     catch(e) { showToast("Error al guardar", "error"); }
     finally { btn.innerText = "GUARDAR CAMBIOS"; }
 };
 
+// --- FUNCIÓN DE SEGUIR PROTEGIDA ---
 window.toggleFollow = function(target) {
     const me = localStorage.getItem('savedRobloxUser');
     if(!me) { showToast("Regístrate primero", "error"); return; }
     if(me === target) return;
     
+    const isFollowing = myFollowingList.includes(target);
     const updates = {};
-    updates[`users/${me}/following/${target}`] = true; 
-    updates[`users/${target}/followers/${me}`] = true;
+    
+    // Obtenemos los contadores actuales para evitar negativos
+    const myFollowingCount = allUsersMap[me]?.followingCount || 0;
+    const targetFollowersCount = allUsersMap[target]?.followersCount || 0;
+
+    if (isFollowing) {
+        // UNFOLLOW
+        updates[`users/${me}/following/${target}`] = null; 
+        updates[`users/${target}/followers/${me}`] = null;
+        
+        // CORRECCIÓN: Si el contador es 0 o menor, NO restamos
+        updates[`users/${me}/followingCount`] = (myFollowingCount > 0) ? increment(-1) : 0;
+        updates[`users/${target}/followersCount`] = (targetFollowersCount > 0) ? increment(-1) : 0;
+        
+        showToast(`Dejaste de seguir a ${target}`, "info");
+    } else {
+        // FOLLOW
+        updates[`users/${me}/following/${target}`] = true; 
+        updates[`users/${target}/followers/${me}`] = true;
+        
+        updates[`users/${me}/followingCount`] = increment(1);
+        updates[`users/${target}/followersCount`] = increment(1);
+        
+        showToast(`Siguiendo a ${target}`, "success");
+    }
+
     update(ref(db), updates);
-    showToast(`Siguiendo a ${target}`, "success");
-    setTimeout(() => renderCurrentView(), 300);
+    setTimeout(() => renderCurrentView(), 200);
 };
 
 window.loginSystem = async function() {
@@ -463,8 +490,6 @@ window.logoutSystem = () => showConfirm("¿Cerrar sesión?", () => {
     localStorage.clear(); 
     window.location.reload(); 
 });
-
-window.openFullProfile = (u) => { viewingUserProfile = u; changeSection('Perfil'); };
 
 const searchIn = document.getElementById('searchInput');
 if(searchIn) searchIn.oninput = (e) => { searchTerm = e.target.value.trim(); renderCurrentView(); };
@@ -565,13 +590,13 @@ if(form) {
         await push(threadsRef, post);
         form.reset();
         document.getElementById('fileName').textContent = "";
-        closeModal('newThreadModalContent');
+        const modal = document.getElementById('newThreadModal'); 
+        if(modal) modal.style.display = 'none';
         showToast("Publicado", "success");
         btn.disabled = false; btn.innerText = "PUBLICAR";
         changeSection('Home');
     };
 }
-
 document.addEventListener('DOMContentLoaded', () => {
     initFirebaseListener();
     const user = localStorage.getItem('savedRobloxUser');
@@ -579,5 +604,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('menuLogin').style.display = 'none'; 
         document.getElementById('menuLogout').style.display = 'block'; 
     }
-    changeSection(localStorage.getItem('lastSection') || 'Home');
+    const lastSection = localStorage.getItem('lastSection') || 'Home';
+    if (lastSection === 'Perfil') {
+        const savedProfile = localStorage.getItem('lastVisitedProfile');
+        if (savedProfile) {
+            viewingUserProfile = savedProfile;
+        } else {
+            if (user) viewingUserProfile = ''; 
+            else { changeSection('Home'); return; }
+        }
+    }
+    changeSection(lastSection);
 });
