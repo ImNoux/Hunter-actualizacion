@@ -28,7 +28,7 @@ let verifiedUsersList = [];
 let allUsersMap = {}; 
 let myFollowingList = []; 
 
-// --- TOASTS (Notificaciones) ---
+// --- TOASTS ---
 window.showToast = function(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if(!container) return;
@@ -43,7 +43,6 @@ window.showToast = function(message, type = 'info') {
     }, 3000);
 };
 
-// --- CONFIRMACIÓN ---
 window.showConfirm = function(message, callback) {
     const modal = document.getElementById('confirmModal');
     const text = document.getElementById('confirmText');
@@ -61,10 +60,26 @@ function makeLinksClickable(text) {
     return text.replace(urlRegex, (url) => `<a href="${url}" target="_blank" style="color:#00a2ff; text-decoration:underline;">${url}</a>`);
 }
 
+// --- NUEVO FORMATO INTELIGENTE (Soluciona el "1000 mil") ---
 function formatCount(num) {
     if (!num) return 0;
-    if (num >= 1000000) return (Math.floor(num/100000)/10) + ' M';
-    if (num >= 1000) return (Math.floor(num/100)/10) + ' k';
+    
+    // Si ya es 1 millón o más
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1).replace(/\.0$/, '') + ' mill.';
+    }
+    
+    // Si es miles (ej: 1000 a 999,999)
+    if (num >= 1000) {
+        // Calculamos cómo se vería en miles
+        let val = (num / 1000).toFixed(1).replace(/\.0$/, '');
+        
+        // AQUÍ ESTÁ EL TRUCO: Si el redondeo nos da "1000", lo cambiamos a "1 mill."
+        if (val === '1000') return '1 mill.';
+        
+        return val + ' mil';
+    }
+    
     return num;
 }
 
@@ -77,19 +92,16 @@ window.getUserId = function() {
     return userId;
 }
 
-// --- LISTENERS FIREBASE ---
+// --- LISTENERS ---
 function initFirebaseListener() {
     onValue(usersRef, (snap) => { 
         allUsersMap = snap.val() || {}; 
-        
-        // Actualizar lista de seguidos del usuario actual
         const myUser = localStorage.getItem('savedRobloxUser');
         if (myUser && allUsersMap[myUser] && allUsersMap[myUser].following) {
             myFollowingList = Object.keys(allUsersMap[myUser].following);
         } else {
             myFollowingList = [];
         }
-
         if (allThreadsData.length > 0) renderCurrentView(); 
     });
     
@@ -147,7 +159,19 @@ function renderCurrentView() {
     renderPostList(container, false);
 }
 
-// --- RENDERIZADO DE POSTS (CON MENU + Y SEGUIR) ---
+// --- FUNCIÓN CONTADOR FOTOS ---
+window.updateImageCounter = function(carousel) {
+    const width = carousel.offsetWidth;
+    const currentIndex = Math.round(carousel.scrollLeft / width) + 1;
+    const totalImages = carousel.childElementCount;
+    
+    const badge = carousel.parentElement.querySelector('.image-counter-badge');
+    if(badge) {
+        badge.innerText = `${currentIndex}/${totalImages}`;
+    }
+};
+
+// --- RENDERIZADO DE POSTS ---
 function renderThread(key, thread, container) {
     const div = document.createElement('div');
     div.className = 'thread';
@@ -160,18 +184,16 @@ function renderThread(key, thread, container) {
     const isVerified = authorName && verifiedUsersList.includes(authorName.toLowerCase());
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
     
-    // Lógica Seguir / Botón (+)
+    // Avatar + Botón Seguir (Menú)
     const isMe = (myUser === authorName);
     const isFollowing = myFollowingList.includes(authorName);
     
-    // Solo mostramos el botón + si NO soy yo y NO lo sigo
     let avatarHTML = '';
     if (!isMe && !isFollowing && myUser) {
         avatarHTML = `
         <div class="avatar-wrapper" onclick="toggleMiniMenu(this)">
             <img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small">
             <div class="plus-badge"><i class="fas fa-plus"></i></div>
-            
             <div class="mini-action-menu">
                 <div onclick="event.stopPropagation(); openFullProfile('${authorName}')">
                     <i class="far fa-user"></i> Ir al perfil
@@ -182,25 +204,29 @@ function renderThread(key, thread, container) {
             </div>
         </div>`;
     } else {
-        // Si ya lo sigo o soy yo, imagen normal limpia
-        avatarHTML = `
-        <img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">
-        `;
+        avatarHTML = `<img src="${authorData.avatar || DEFAULT_AVATAR}" class="user-avatar-small" onclick="openFullProfile('${authorName}')">`;
     }
     
-    // Lógica Carrusel
+    // Carrusel con contador
     let mediaHTML = '';
-    if(thread.images && thread.images.length > 0) {
-        mediaHTML = `<div class="media-carousel">`;
-        thread.images.forEach(img => { mediaHTML += `<img src="${img}">`; });
-        mediaHTML += `</div>`;
+    if(thread.images && thread.images.length > 1) {
+        mediaHTML = `
+        <div class="media-wrapper">
+            <div class="media-carousel" onscroll="updateImageCounter(this)">
+                ${thread.images.map(img => `<img src="${img}">`).join('')}
+            </div>
+            <div class="image-counter-badge">1/${thread.images.length}</div>
+        </div>`;
+    } else if (thread.images && thread.images.length === 1) {
+        mediaHTML = `<img src="${thread.images[0]}" style="width:100%; margin-top:10px; border-radius:8px;">`;
     } else if(thread.image) {
         mediaHTML = `<img src="${thread.image}" style="width:100%; margin-top:10px; border-radius:8px;">`;
     }
-    
+
     const userId = getUserId();
     const likes = thread.likes || {};
     const isLiked = likes[userId] ? 'liked' : '';
+    const commentCount = thread.comments ? Object.keys(thread.comments).length : 0;
 
     div.innerHTML = `
         <div class="post-header">
@@ -227,13 +253,15 @@ function renderThread(key, thread, container) {
             <button class="like-button ${isLiked}" onclick="toggleLike('${key}', ${thread.likeCount||0}, this)">
                 <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${formatCount(thread.likeCount)}
             </button>
-            <button onclick="openComments('${key}')"><i class="far fa-comment"></i></button>
+            <button onclick="openComments('${key}')">
+                <i class="far fa-comment"></i> ${formatCount(commentCount)}
+            </button>
         </div>
     `;
     container.appendChild(div);
 }
 
-// Función auxiliar para el menú desplegable del avatar
+// Menú Avatar
 window.toggleMiniMenu = function(element) {
     document.querySelectorAll('.mini-action-menu.show').forEach(el => {
         if(el !== element.querySelector('.mini-action-menu')) el.classList.remove('show');
@@ -241,14 +269,12 @@ window.toggleMiniMenu = function(element) {
     const menu = element.querySelector('.mini-action-menu');
     if(menu) menu.classList.toggle('show');
 }
-// Cerrar menú al hacer click fuera
 document.addEventListener('click', function(e) {
     if(!e.target.closest('.avatar-wrapper')) {
         document.querySelectorAll('.mini-action-menu.show').forEach(el => el.classList.remove('show'));
     }
 });
 
-// --- PERFIL COMPLETO (CON ESTADO FLOTANTE) ---
 function renderFullProfile(container) {
     const target = viewingUserProfile || localStorage.getItem('savedRobloxUser');
     if (!target) return showToast("Inicia sesión", "error");
@@ -258,7 +284,7 @@ function renderFullProfile(container) {
     const isVerified = verifiedUsersList.includes(target.toLowerCase());
     const verifiedIconHTML = isVerified ? '<i class="fas fa-check-circle verified-icon"></i>' : '';
     
-    // ESTADO FLOTANTE (FEATURE 2)
+    // Estado flotante
     const userStatus = ud.status && ud.status.trim() !== "" 
         ? `<div class="status-pill">${ud.status}</div>` 
         : '';
@@ -346,7 +372,7 @@ function renderActivity(container) {
     } else { container.innerHTML += '<p style="text-align:center; padding:40px; color:#555;">Sin actividad.</p>'; }
 }
 
-// --- EDICIÓN PERFIL (FEATURE 3: LÍMITE 15 DÍAS) ---
+// --- EDICIÓN PERFIL (15 DÍAS) ---
 window.openEditProfileModal = function() {
     const d = allUsersMap[localStorage.getItem('savedRobloxUser')] || {};
     document.getElementById('editAvatarPreview').src = d.avatar || DEFAULT_AVATAR;
@@ -391,7 +417,6 @@ window.saveProfileChanges = async function() {
     finally { btn.innerText = "GUARDAR CAMBIOS"; }
 };
 
-// --- RESTO DE FUNCIONES ---
 window.toggleFollow = function(target) {
     const me = localStorage.getItem('savedRobloxUser');
     if(!me) { showToast("Regístrate primero", "error"); return; }
