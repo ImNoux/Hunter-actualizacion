@@ -282,3 +282,37 @@ button:disabled { background: #444; color: #888; cursor: not-allowed; }
 .activity-avatar { width: 35px; height: 35px; border-radius: 50%; }
 .activity-text { font-size: 0.95em; color: #ccc; }
 .activity-text strong { color: white; cursor: pointer; }
+/* --- AGREGAR AL FINAL DE STYLE.CSS --- */
+
+/* Ajuste fino para el icono de verificado */
+.verified-icon {
+    color: #00a2ff;
+    font-size: 0.9em;
+    margin-left: 4px; /* Separación del texto */
+    vertical-align: middle; /* Alineación perfecta con el texto */
+    display: inline-block;
+}
+
+/* Estilo para múltiples imágenes (CARRUSEL TIPO INSTAGRAM) */
+.media-carousel {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 5px;
+    margin-top: 10px;
+    border-radius: 8px;
+    /* Ocultar barra de scroll fea pero permitir scroll */
+    scrollbar-width: none; 
+}
+.media-carousel::-webkit-scrollbar {
+    display: none;
+}
+.media-carousel img {
+    scroll-snap-align: center;
+    min-width: 100%; /* Ocupa todo el ancho del contenedor */
+    height: 300px; /* Altura fija para uniformidad */
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #3a3a3a;
+}
