@@ -25,117 +25,128 @@
             <div style="width: 40px;"></div> </div>
     </header>
 
-    <div id="searchContainer" style="display:none; padding: 10px 20px;">
-        <input type="text" id="searchInput" placeholder="Buscar usuarios, posts, etiquetas...">
+    <div id="searchContainer">
+        <div class="search-box-wrapper">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Buscar usuarios o posts...">
+        </div>
     </div>
 
-    <main>
-        <div class="thread-container">
-            <p id="noThreadsMessage">Cargando...</p>
-        </div>
-        <div id="pagination-container"></div>
-    </main>
+    <main class="thread-container">
+        </main>
 
-    <nav class="bottom-navbar">
-        <div class="nav-item active" onclick="changeSection('Home')" id="nav-home">
+    <nav class="bottom-nav">
+        <div class="nav-item active" id="nav-home" onclick="changeSection('Home')">
             <i class="fas fa-home"></i>
         </div>
-        <div class="nav-item" onclick="changeSection('Busqueda')" id="nav-search">
+        <div class="nav-item" id="nav-search" onclick="changeSection('Busqueda')">
             <i class="fas fa-search"></i>
         </div>
-        <div class="nav-item plus-btn-container" onclick="openModal('newThreadModalContent')">
-            <div class="plus-btn"><i class="fas fa-plus"></i></div>
+        <div class="nav-item" id="nav-add" onclick="openModal('newThreadModalContent')">
+            <i class="fas fa-plus-circle add-btn"></i>
         </div>
-        <div class="nav-item" onclick="changeSection('Activity')" id="nav-activity">
-            <i class="far fa-heart"></i>
+        <div class="nav-item" id="nav-activity" onclick="changeSection('Activity')">
+            <i class="fas fa-heart"></i>
         </div>
-        <div class="nav-item" onclick="openFullProfile()" id="nav-profile">
-            <i class="far fa-user"></i>
+        <div class="nav-item" id="nav-profile" onclick="changeSection('Perfil')">
+            <i class="fas fa-user"></i>
         </div>
     </nav>
 
-    <div class="modal-content" id="newThreadModalContent">
-        <span class="close-button" onclick="closeModal('newThreadModalContent')">&times;</span>
-        <h2 style="font-size: 1.3em; margin-bottom: 20px; text-align: center; color: #fff;">Crear Publicación</h2>
-        <form id="newThreadForm">
-            <input type="hidden" id="sectionInput" name="section" value="Publicaciones">
-            <div class="form-group">
-                <label>Categoría:</label>
-                <select id="categorySelect" required>
-                    <option value="" disabled selected>-- Selecciona --</option>
-                    <option value="Hunter">Hunter</option>
-                    <option value="Creator">Creator</option>
-                    <option value="Elite">Elite</option>
-                    <option value="Top Model">Top Model</option>
-                    <option value="Mentor">Mentor</option>
-                    <option value="Cheerleader">Cheerleader</option>
-                    <option value="Moon & Sun">Moon & Sun</option>
-                    <option value="Publicaciones">General</option>
+    <div id="newThreadModalContent" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('newThreadModalContent')">&times;</span>
+            <h2>Nueva Publicación</h2>
+            <form id="newThreadForm">
+                <input type="text" id="title" placeholder="Título..." required maxlength="50">
+                <select id="categorySelect">
+                    <option value="General">General</option>
+                    <option value="Dudas">Dudas</option>
+                    <option value="Aportes">Aportes</option>
+                    <option value="Off-Topic">Off-Topic</option>
                 </select>
-            </div>
-            <div class="form-group" style="display:none;">
-                <input type="text" id="robloxUser" name="robloxUser">
-            </div>
-            <div class="form-group">
-                <input type="text" id="title" placeholder="Título..." required autocomplete="off">
-            </div>
-            <div class="form-group">
-                <textarea id="description" placeholder="¿Qué estás pensando?" required rows="4"></textarea>
-            </div>
-            <label for="imageFile" class="upload-btn-gray"><i class="fas fa-images"></i> Foto/Video</label>
-            <input type="file" id="imageFile" accept="image/*, video/*" multiple style="display:none;">
-            <p id="fileName" class="file-name-display"></p>
-            <button type="submit" id="submitBtn" class="publish-btn">PUBLICAR</button>
-        </form>
-    </div>
-
-    <div id="commentsModal" class="modal-overlay">
-        <div class="comments-content">
-            <span class="close-button" onclick="closeModal('commentsModal')">&times;</span>
-            <h3>Comentarios</h3>
-            <div id="commentsList"></div>
-            <form id="commentForm">
-                <input type="text" id="commentInput" placeholder="Escribe un comentario..." required autocomplete="off">
-                <button type="submit"><i class="fas fa-paper-plane"></i></button>
+                <textarea id="description" placeholder="¿Qué estás pensando?" required></textarea>
+                
+                <label for="imageFile" class="upload-btn-gray">
+                    <i class="fas fa-image"></i> Agregar imagen
+                </label>
+                <input type="file" id="imageFile" accept="image/*" style="display:none;">
+                <span id="fileName" style="font-size:0.8em; color:#00a2ff;"></span>
+                
+                <button type="submit" id="submitBtn">PUBLICAR</button>
             </form>
         </div>
     </div>
 
-    <div class="modal-content" id="loginModal">
-        <span class="close-button" onclick="closeModal('loginModal')">&times;</span>
-        <h2 style="text-align:center;">Iniciar Sesión</h2>
-        <div class="form-group"><input type="text" id="loginUser" placeholder="Usuario"></div>
-        <div class="form-group"><input type="password" id="loginPin" placeholder="PIN"></div>
-        <button onclick="loginSystem()" class="publish-btn">ENTRAR</button>
-        <p style="text-align:center; margin-top:15px; font-size:0.9em;"><a href="#" onclick="closeModal('loginModal'); openModal('registerModal')" style="color:#00a2ff;">Crear cuenta</a></p>
+    <div id="loginModal" class="modal-overlay">
+        <div class="modal-content small-modal">
+            <span class="close-modal" onclick="closeModal('loginModal')">&times;</span>
+            <h2>Iniciar Sesión</h2>
+            <input type="text" id="loginUser" placeholder="Usuario">
+            <input type="password" id="loginPin" placeholder="PIN (4 dígitos)" maxlength="4">
+            <button onclick="loginSystem()">ENTRAR</button>
+            <p class="switch-auth" onclick="openModal('registerModal')">¿No tienes cuenta? Regístrate</p>
+        </div>
     </div>
 
-    <div class="modal-content" id="registerModal">
-        <span class="close-button" onclick="closeModal('registerModal')">&times;</span>
-        <h2 style="text-align:center;">Registro</h2>
-        <div class="form-group"><input type="text" id="regUser" placeholder="Usuario nuevo"></div>
-        <div class="form-group"><input type="text" id="regPin" placeholder="Crea un PIN (4 dígitos)" maxlength="4"></div>
-        <button onclick="registerSystem()" class="publish-btn">REGISTRARSE</button>
+    <div id="registerModal" class="modal-overlay">
+        <div class="modal-content small-modal">
+            <span class="close-modal" onclick="closeModal('registerModal')">&times;</span>
+            <h2>Crear Cuenta</h2>
+            <input type="text" id="regUser" placeholder="Nombre de usuario">
+            <input type="password" id="regPin" placeholder="Crea un PIN (4 dígitos)" maxlength="4">
+            <button onclick="registerSystem()">REGISTRARSE</button>
+            <p class="switch-auth" onclick="openModal('loginModal')">¿Ya tienes cuenta? Entra aquí</p>
+        </div>
     </div>
 
-    <div class="modal-content" id="editProfileModal">
-        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-            <span onclick="closeModal('editProfileModal')" style="cursor:pointer;">✕</span>
-            <h3>Editar perfil</h3>
-            <span onclick="saveProfileChanges()" id="saveProfileBtn" style="color:#00a2ff; cursor:pointer; font-weight:bold;">Listo</span>
+    <div id="commentsModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('commentsModal')">&times;</span>
+            <h3>Comentarios</h3>
+            <div id="commentsList" style="max-height: 300px; overflow-y: auto; text-align: left; margin-bottom: 15px;"></div>
+            <form id="commentForm" style="display:flex; gap:5px;">
+                <input type="text" id="commentInput" placeholder="Escribe un comentario..." required style="flex:1;">
+                <button type="submit" style="width:auto; padding:0 15px;"><i class="fas fa-paper-plane"></i></button>
+            </form>
         </div>
-        <div style="text-align:center; margin-bottom:20px;">
-            <img id="editAvatarPreview" src="" style="width:80px; height:80px; border-radius:50%;">
-            <p onclick="document.getElementById('avatarUpload').click()" style="color:#00a2ff; font-size:0.9em; cursor:pointer; margin-top:5px;">Cambiar foto</p>
+    </div>
+
+    <div id="editProfileModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('editProfileModal')">&times;</span>
+            <h3>Editar Perfil</h3>
+            <div style="text-align:center; margin-bottom:15px;">
+                <img id="editAvatarPreview" src="" style="width:80px; height:80px; border-radius:50%; object-fit:cover;">
+                <label for="avatarUpload" style="display:block; color:#00a2ff; cursor:pointer; font-size:0.9em; margin-top:5px;">Cambiar foto</label>
+            </div>
+            <input type="text" id="editNameInput" placeholder="Nombre visible">
+            <input type="text" id="editHandleInput" placeholder="Usuario (@handle)">
+            <input type="text" id="editStatusInput" placeholder="Estado / Rol corto (ej. Creador)">
+            <textarea id="editBioInput" placeholder="Biografía..."></textarea>
+            <button id="saveProfileBtn" onclick="saveProfileChanges()">GUARDAR CAMBIOS</button>
         </div>
-        <div class="edit-group"><label>Nombre</label><input type="text" id="editNameInput"></div>
-        <div class="edit-group"><label>Usuario</label><input type="text" id="editHandleInput"></div>
-        <div class="edit-group"><label>Bio</label><textarea id="editBioInput"></textarea></div>
-        <div class="edit-group"><label>Estado</label><input type="text" id="editStatusInput"></div>
+    </div>
+
+    <div id="updatesModal" class="modal-overlay">
+        <div class="info-content">
+            <span class="close-modal" onclick="closeModal('updatesModal')">&times;</span>
+            <h3>Actualizaciones</h3>
+            <p>Versión 2.5: Nuevo diseño de perfiles, sistema de rangos y corrección de navegación.</p>
+        </div>
+    </div>
+
+    <div id="contactModal" class="modal-overlay">
+        <div class="info-content">
+            <span class="close-modal" onclick="closeModal('contactModal')">&times;</span>
+            <h3>Contacto</h3>
+            <p>Discord: .gg/hunterteam</p>
+            <p>Email: soporte@hunterteam.com</p>
+        </div>
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
-    
+
     <div id="confirmModal" class="modal-overlay" style="z-index: 5000;">
         <div class="info-content" style="max-width: 300px; padding: 20px;">
             <h3>Cerrar Sesión</h3>
@@ -148,7 +159,9 @@
     </div>
 
     <input type="file" id="avatarUpload" accept="image/*" style="display:none;">
+    
     <script type="module" src="script.js"></script>
+
     <script>
         function toggleMenu() { document.getElementById("menuDropdown").classList.toggle("show"); }
         window.closeModal = (id) => document.getElementById(id).style.display = 'none';
@@ -158,10 +171,9 @@
         }
         document.getElementById('imageFile').onchange = function() {
             if(this.files && this.files.length > 0) {
-                document.getElementById('fileName').textContent = `${this.files.length} archivos`;
+                document.getElementById('fileName').textContent = this.files[0].name;
             }
         };
-        window.toggleMenu = toggleMenu;
     </script>
 </body>
-</html> 
+</html>
